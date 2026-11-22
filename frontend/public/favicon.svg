@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fantasy Predictor">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#34d399"/>
-      <stop offset="1" stop-color="#0ea5e9"/>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#05e1ff"/>
+      <stop offset="0.45" stop-color="#3d7bff"/>
+      <stop offset="0.75" stop-color="#8b3cff"/>
+      <stop offset="1" stop-color="#ff2882"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
-  <rect x="10" y="10" width="44" height="44" rx="6" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
-  <line x1="32" y1="10" x2="32" y2="54" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
-  <circle cx="32" cy="32" r="7" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
-  <polyline points="14,44 24,36 32,40 46,22" fill="none" stroke="#0f172a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="46" cy="22" r="5" fill="#ffffff" stroke="#0f172a" stroke-width="3"/>
+  <path d="M32 3 L57 12 V31 C57 46 46 56 32 61 C18 56 7 46 7 31 V12 Z" fill="url(#sweep)"/>
+  <path d="M32 9 L51 16 V31 C51 42.5 43 50.5 32 54.5 C21 50.5 13 42.5 13 31 V16 Z" fill="#14001a" fill-opacity="0.88"/>
+  <path d="M19 41 L27 33 L33 37 L45 22" fill="none" stroke="url(#sweep)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 22 H45 V29" fill="none" stroke="url(#sweep)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

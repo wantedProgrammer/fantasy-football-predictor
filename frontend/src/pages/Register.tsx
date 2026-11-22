@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client";
 import { useNavigate, Link } from "react-router-dom";
 
 import { REGISTER } from "../graphql/auth";
-import logo from "../assets/logo.svg";
+import AuthShell, { FieldLabel, FormError, primaryButton } from "../components/AuthShell";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -92,108 +92,62 @@ export default function Register() {
     }
   }
 
+  const fields: {
+    name: keyof typeof form;
+    label: string;
+    type?: string;
+    autoComplete: string;
+    placeholder: string;
+    half?: boolean;
+  }[] = [
+    { name: "name", label: "First name", autoComplete: "given-name", placeholder: "Thandi", half: true },
+    { name: "surname", label: "Surname", autoComplete: "family-name", placeholder: "Moyo", half: true },
+    { name: "email", label: "Email", type: "email", autoComplete: "email", placeholder: "you@example.com" },
+    { name: "mobile", label: "Mobile number", type: "tel", autoComplete: "tel", placeholder: "0612345678" },
+    { name: "password", label: "Password", type: "password", autoComplete: "new-password", placeholder: "6+ characters, one uppercase", half: true },
+    { name: "confirmPassword", label: "Confirm password", type: "password", autoComplete: "new-password", placeholder: "Repeat password", half: true },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-700 via-emerald-500 to-sky-700 p-6">
+    <AuthShell
+      eyebrow="Join the dugout"
+      title="Create account"
+      subtitle="Get gameweek-by-gameweek team predictions for FPL and the Champions League."
+    >
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+        {fields.map((field) => (
+          <div key={field.name} className={field.half ? "" : "sm:col-span-2"}>
+            <FieldLabel htmlFor={field.name}>{field.label}</FieldLabel>
+            <input
+              id={field.name}
+              name={field.name}
+              type={field.type ?? "text"}
+              autoComplete={field.autoComplete}
+              placeholder={field.placeholder}
+              value={form[field.name]}
+              onChange={updateField}
+              className="field"
+            />
+          </div>
+        ))}
 
-      <div className="bg-white shadow-2xl rounded-3xl w-full max-w-md p-8">
+        {error && (
+          <div className="sm:col-span-2">
+            <FormError message={error} />
+          </div>
+        )}
 
-        <img
-          src={logo}
-          alt="Fantasy Predictor"
-          className="mx-auto mb-4 h-16 w-16"
-        />
+        <button type="submit" disabled={loading} className={`${primaryButton} sm:col-span-2`}>
+          {loading ? "Creating..." : "Create account"}
+        </button>
+      </form>
 
-        <h1 className="text-3xl font-bold text-center text-slate-900">
-          Create Account
-        </h1>
-
-        <p className="mt-2 mb-6 text-center text-sm text-slate-500">
-          Get gameweek-by-gameweek team predictions for FPL and the
-          Champions League.
-        </p>
-
-        <form
-          onSubmit={submit}
-          className="space-y-4"
-        >
-
-          <input
-            name="name"
-            placeholder="First Name"
-            className="w-full border rounded-lg p-3"
-            onChange={updateField}
-          />
-
-          <input
-            name="surname"
-            placeholder="Surname"
-            className="w-full border rounded-lg p-3"
-            onChange={updateField}
-          />
-
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            className="w-full border rounded-lg p-3"
-            onChange={updateField}
-          />
-
-          <input
-            name="mobile"
-            placeholder="Mobile"
-            className="w-full border rounded-lg p-3"
-            onChange={updateField}
-          />
-
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            className="w-full border rounded-lg p-3"
-            onChange={updateField}
-          />
-
-          <input
-            name="confirmPassword"
-            type="password"
-            placeholder="Confirm Password"
-            className="w-full border rounded-lg p-3"
-            onChange={updateField}
-          />
-
-          {error && (
-            <p className="text-red-500 text-sm">
-              {error}
-            </p>
-          )}
-
-          <button
-            disabled={loading}
-            className="w-full bg-emerald-600 text-white rounded-lg p-3 font-semibold hover:bg-emerald-700"
-          >
-            {loading
-              ? "Creating..."
-              : "Register"}
-          </button>
-
-        </form>
-
-        <p className="text-center mt-5">
-
-          Already have an account?
-
-          <Link
-            to="/login"
-            className="text-emerald-700 ml-2"
-          >
-            Login
-          </Link>
-
-        </p>
-
-      </div>
-
-    </div>
+      <p className="mt-8 text-center text-sm text-white/60">
+        Already have an account?
+        <Link to="/login" className="ml-2 font-extrabold text-accent hover:underline">
+          Log in
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

@@ -40,13 +40,13 @@ export default function GameweekPicker({
 
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <span className="eyebrow mb-2 block text-white/75">
         Gameweek
       </span>
       <select
         value={selected}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm outline-none focus:border-emerald-400"
+        className="field"
       >
         {upcoming.map((gameweek) => (
           <option key={gameweek.id} value={gameweek.id}>
@@ -56,7 +56,7 @@ export default function GameweekPicker({
         ))}
       </select>
       {deadline && (
-        <span className="mt-1 block text-xs text-slate-500">
+        <span className="mt-1.5 block text-xs font-semibold text-white/70">
           Deadline {deadline}
         </span>
       )}

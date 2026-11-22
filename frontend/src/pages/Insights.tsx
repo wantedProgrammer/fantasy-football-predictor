@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { useQuery } from '@apollo/client';
 
 import AppLayout from '../components/AppLayout';
+import { Shirt } from '../components/Decor';
+import PageHero from '../components/PageHero';
 import GameweekPicker from '../components/GameweekPicker';
 import { ErrorPanel, Loading } from '../components/QueryState';
 import { GET_INSIGHTS } from '../graphql/predictor';
@@ -17,14 +19,14 @@ import {
   formatPrice,
 } from '../lib/format';
 
-const TIP_STYLES: Record<string, { label: string; className: string }> = {
-  CAPTAIN: { label: 'Captain', className: 'bg-amber-400/15 text-amber-300' },
-  FIXTURES: { label: 'Fixtures', className: 'bg-sky-400/15 text-sky-300' },
-  INJURY: { label: 'Injury', className: 'bg-red-400/15 text-red-300' },
-  DIFFERENTIAL: { label: 'Differential', className: 'bg-violet-400/15 text-violet-300' },
-  VALUE: { label: 'Value', className: 'bg-emerald-400/15 text-emerald-300' },
-  TRANSFERS: { label: 'Transfers', className: 'bg-indigo-400/15 text-indigo-300' },
-  SCHEDULE: { label: 'Schedule', className: 'bg-slate-400/15 text-slate-300' },
+const TIP_STYLES: Record<string, { label: string; colour: string }> = {
+  CAPTAIN: { label: 'Captain', colour: '#fcd34d' },
+  FIXTURES: { label: 'Fixtures', colour: '#01fc7a' },
+  INJURY: { label: 'Injury', colour: '#ff1751' },
+  DIFFERENTIAL: { label: 'Differential', colour: '#b57bff' },
+  VALUE: { label: 'Value', colour: '#05f0ff' },
+  TRANSFERS: { label: 'Transfers', colour: '#6d8bff' },
+  SCHEDULE: { label: 'Schedule', colour: '#e7e7e7' },
 };
 
 function Panel({
@@ -37,9 +39,12 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
-      <h2 className="text-lg font-bold">{title}</h2>
-      {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+    <section className="rounded-3xl border border-line bg-surface p-5">
+      <h2 className="font-display text-2xl font-extrabold uppercase italic tracking-wide">
+        <span className="mr-2 inline-block h-4 w-1.5 -skew-x-12 bg-accent align-middle" />
+        {title}
+      </h2>
+      {subtitle && <p className="mt-0.5 text-xs font-medium text-white/55">{subtitle}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -59,55 +64,86 @@ function PlayerRow({
   const { player } = item;
 
   return (
-    <li className="flex items-center gap-3 rounded-xl bg-slate-800/60 px-3 py-2">
+    <li className="flex items-center gap-3 rounded-2xl bg-raised/70 px-3 py-2 transition hover:bg-raised">
       {rank !== undefined && (
-        <span className="w-5 text-center text-sm font-bold text-slate-500">{rank}</span>
+        <span className="stat w-5 text-center text-xl text-white/35">{rank}</span>
       )}
-      <span
-        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${POSITION_STYLES[player.position]}`}
-      >
-        {player.position}
-      </span>
+      <Shirt teamShort={player.teamShort} goalkeeper={player.position === 'GK'} size={34} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{player.displayName}</p>
-        <p className="truncate text-xs text-slate-400">
+        <p className="flex items-center gap-2 font-bold">
+          <span className="truncate">{player.displayName}</span>
+          <span
+            className={`shrink-0 rounded px-1.5 py-px text-[10px] font-extrabold ${POSITION_STYLES[player.position]}`}
+          >
+            {player.position}
+          </span>
+        </p>
+        <p className="truncate text-xs text-white/55">
           {player.teamShort}
           {detail ? ` · ${detail}` : ''}
         </p>
       </div>
-      <span className="text-right text-sm font-bold text-emerald-300">{metric}</span>
+      {metric && <span className="stat text-right text-xl text-accent">{metric}</span>}
     </li>
   );
 }
 
 function CaptainChart({ picks }: { picks: ProjectedPlayer[] }) {
   const max = Math.max(...picks.map((item) => item.predictedPoints), 1);
+  const [top, ...rest] = picks;
+
+  if (!top) {
+    return <p className="text-sm text-white/55">No captain picks yet.</p>;
+  }
 
   return (
-    <ol className="space-y-3">
-      {picks.map((item, index) => (
-        <li key={item.player.id}>
-          <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-            <span className="truncate font-semibold">
-              {index === 0 && <span className="mr-1 text-amber-300">★</span>}
-              {item.player.displayName}
-              <span className="ml-2 text-xs font-normal text-slate-400">
-                {item.fixtures.map(fixtureLabel).join(', ')}
+    <div>
+      <div className="relative isolate flex items-center gap-4 overflow-hidden rounded-2xl bg-sweep p-4">
+        <div className="absolute inset-0 -z-10 bg-ink/40" />
+        <span className="relative">
+          <span className="absolute -right-1 -top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 font-display text-sm font-black text-black ring-2 ring-black/40">
+            C
+          </span>
+          <Shirt teamShort={top.player.teamShort} goalkeeper={top.player.position === 'GK'} size={60} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow text-white/80">Top captain pick</p>
+          <p className="headline truncate text-3xl">{top.player.displayName}</p>
+          <p className="truncate text-xs font-semibold text-white/75">
+            {top.fixtures.map(fixtureLabel).join(', ') || 'No fixture'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="stat text-5xl text-amber-300">{formatPoints(top.predictedPoints)}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+            x2 = {formatPoints(top.predictedPoints * 2)}
+          </p>
+        </div>
+      </div>
+
+      <ol className="mt-4 space-y-3">
+        {rest.map((item, index) => (
+          <li key={item.player.id}>
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+              <span className="truncate font-bold">
+                <span className="stat mr-2 text-base text-white/35">{index + 2}</span>
+                {item.player.displayName}
+                <span className="ml-2 text-xs font-medium text-white/50">
+                  {item.fixtures.map(fixtureLabel).join(', ')}
+                </span>
               </span>
-            </span>
-            <span className="font-bold text-amber-300">
-              {formatPoints(item.predictedPoints)}
-            </span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-slate-800">
-            <div
-              className={`h-full rounded-full ${index === 0 ? 'bg-amber-300' : 'bg-amber-300/50'}`}
-              style={{ width: `${(item.predictedPoints / max) * 100}%` }}
-            />
-          </div>
-        </li>
-      ))}
-    </ol>
+              <span className="stat text-xl text-amber-300">{formatPoints(item.predictedPoints)}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-raised">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-300/40 to-amber-300"
+                style={{ width: `${(item.predictedPoints / max) * 100}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -123,7 +159,7 @@ function FixtureTicker({ runs }: { runs: TeamRun[] }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[36rem] border-separate border-spacing-y-1 text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
+            <tr className="eyebrow text-left text-white/50">
               <th className="px-2 py-1 font-semibold">Team</th>
               {weeks.map((week) => (
                 <th key={week} className="px-1 py-1 text-center font-semibold">
@@ -136,15 +172,15 @@ function FixtureTicker({ runs }: { runs: TeamRun[] }) {
           <tbody>
             {visible.map((run) => (
               <tr key={run.team}>
-                <td className="whitespace-nowrap rounded-l-lg bg-slate-800/60 px-2 py-1.5 font-semibold">
+                <td className="whitespace-nowrap rounded-l-xl bg-raised/70 px-3 py-1.5 font-bold">
                   {run.team}
                 </td>
                 {weeks.map((week) => {
                   const fixtures = run.fixtures.filter((f) => f.gameweek === week);
                   return (
-                    <td key={week} className="bg-slate-800/60 px-1 py-1.5">
+                    <td key={week} className="bg-raised/70 px-0.5 py-1.5">
                       {fixtures.length === 0 ? (
-                        <span className="block rounded bg-slate-700 px-1 py-1 text-center text-xs text-slate-400">
+                        <span className="block rounded-md bg-black/30 px-1 py-1 text-center text-xs text-white/40">
                           -
                         </span>
                       ) : (
@@ -152,7 +188,7 @@ function FixtureTicker({ runs }: { runs: TeamRun[] }) {
                           {fixtures.map((fixture) => (
                             <span
                               key={`${fixture.opponent}-${fixture.home}`}
-                              className={`block rounded px-1 py-1 text-center text-xs font-bold ${DIFFICULTY_STYLES[fixture.difficulty]}`}
+                              className={`block rounded-md px-1 py-1 text-center text-xs font-extrabold ${DIFFICULTY_STYLES[fixture.difficulty]}`}
                               title={`Difficulty ${fixture.difficulty}/5`}
                             >
                               {fixture.opponent} ({fixture.home ? 'H' : 'A'})
@@ -163,7 +199,7 @@ function FixtureTicker({ runs }: { runs: TeamRun[] }) {
                     </td>
                   );
                 })}
-                <td className="rounded-r-lg bg-slate-800/60 px-2 py-1.5 text-right font-bold">
+                <td className="stat rounded-r-xl bg-raised/70 px-3 py-1.5 text-right text-lg">
                   {run.averageDifficulty.toFixed(1)}
                 </td>
               </tr>
@@ -175,7 +211,7 @@ function FixtureTicker({ runs }: { runs: TeamRun[] }) {
         <button
           type="button"
           onClick={() => setShowAll((current) => !current)}
-          className="mt-3 text-sm font-semibold text-emerald-400 hover:underline"
+          className="mt-3 rounded-full border border-line px-4 py-1.5 text-sm font-bold text-accent transition hover:bg-white/5"
         >
           {showAll ? 'Show fewer teams' : `Show all ${runs.length} teams`}
         </button>
@@ -202,29 +238,28 @@ export default function Insights() {
   const leagueLabel = LEAGUES.find((item) => item.id === league)?.label;
 
   return (
-    <AppLayout>
-      <section className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-            {leagueLabel}
-          </p>
-          <h1 className="mt-1 text-3xl font-black sm:text-4xl">
-            Insights{insights ? `: ${insights.gameweekName}` : ''}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Captaincy, differentials, value, injuries and fixture runs, from the same projections
-            that pick the Best XI.
-          </p>
-        </div>
-        <div className="sm:w-60">
-          <GameweekPicker
-            league={league}
-            value={gameweek}
-            onChange={(value) => setGameweeks((current) => ({ ...current, [league]: value }))}
-          />
-        </div>
-      </section>
-
+    <AppLayout
+      hero={
+        <PageHero
+          eyebrow={`${leagueLabel} · ${insights?.gameweekName ?? 'Upcoming gameweek'}`}
+          title={
+            <>
+              Scout <span className="text-accent">report</span>
+            </>
+          }
+          description="Captaincy, differentials, value, injuries and fixture runs, from the same projections that pick the Best XI."
+          actions={
+            <div className="sm:w-64">
+              <GameweekPicker
+                league={league}
+                value={gameweek}
+                onChange={(value) => setGameweeks((current) => ({ ...current, [league]: value }))}
+              />
+            </div>
+          }
+        />
+      }
+    >
       {loading && <Loading label="Crunching the numbers..." />}
       {error && !loading && (
         <ErrorPanel title="Unable to load insights" error={error} onRetry={() => refetch()} />
@@ -238,15 +273,14 @@ export default function Insights() {
               return (
                 <article
                   key={`${tip.category}-${tip.title}`}
-                  className="rounded-2xl border border-white/10 bg-slate-900 p-4"
+                  className="rounded-2xl border border-line bg-surface p-4 pl-5"
+                  style={{ boxShadow: `inset 4px 0 0 ${style.colour}` }}
                 >
-                  <span
-                    className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${style.className}`}
-                  >
+                  <span className="eyebrow" style={{ color: style.colour }}>
                     {style.label}
                   </span>
-                  <h3 className="mt-2 font-bold">{tip.title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{tip.body}</p>
+                  <h3 className="mt-1.5 text-[0.95rem] font-extrabold leading-snug">{tip.title}</h3>
+                  <p className="mt-1 text-sm text-white/65">{tip.body}</p>
                 </article>
               );
             })}
@@ -301,7 +335,7 @@ export default function Insights() {
 
             <Panel title="Injury & availability watch" subtitle="Popular players who may miss out">
               {insights.injuryWatch.length === 0 ? (
-                <p className="text-sm text-slate-400">No popular players are flagged.</p>
+                <p className="text-sm text-white/55">No popular players are flagged.</p>
               ) : (
                 <ul className="space-y-2">
                   {insights.injuryWatch.map((item) => (
@@ -318,11 +352,11 @@ export default function Insights() {
 
             <Panel title="Transfer trends" subtitle="Most bought and sold this round">
               {insights.mostTransferredIn.length === 0 ? (
-                <p className="text-sm text-slate-400">No transfer data is available yet.</p>
+                <p className="text-sm text-white/55">No transfer data is available yet.</p>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                    <h3 className="eyebrow mb-2 text-[#01fc7a]">
                       Bought
                     </h3>
                     <ul className="space-y-2">
@@ -337,7 +371,7 @@ export default function Insights() {
                     </ul>
                   </div>
                   <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-red-400">
+                    <h3 className="eyebrow mb-2 text-[#ff1751]">
                       Sold
                     </h3>
                     <ul className="space-y-2">

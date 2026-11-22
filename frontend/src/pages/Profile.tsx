@@ -2,6 +2,7 @@ import { useQuery } from '@apollo/client';
 import { Link } from 'react-router-dom';
 
 import AppLayout from '../components/AppLayout';
+import PageHero from '../components/PageHero';
 import { ErrorPanel, Loading } from '../components/QueryState';
 import { ME } from '../graphql/profile';
 import profileHero from '../assets/2025-05-07t205629z_288169850_up1el571m63cj_rtrmadp_3_soccer-champions-psg-ars-report.jpg';
@@ -19,62 +20,68 @@ export default function Profile() {
   const { data, loading, error, refetch } = useQuery<{ me: UserProfile }>(ME, {
     fetchPolicy: 'network-only',
   });
+  const me = data?.me;
+  const initials = me ? `${me.name.charAt(0)}${me.surname.charAt(0)}`.toUpperCase() : '';
 
   return (
-    <AppLayout showLeagueSwitcher={false}>
-      <section className="relative mb-8 overflow-hidden rounded-3xl border border-white/10">
-        <img src={profileHero} alt="" className="h-56 w-full object-cover sm:h-72" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10">
-          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-300">
-            Your profile
-          </p>
-          <h1 className="mt-2 text-3xl font-black sm:text-5xl">
-            {data?.me ? `${data.me.name} ${data.me.surname}` : 'Your account'}
-          </h1>
-        </div>
-      </section>
-
+    <AppLayout
+      showLeagueSwitcher={false}
+      hero={
+        <PageHero
+          eyebrow="Manager profile"
+          title={me ? `${me.name} ${me.surname}` : 'Your account'}
+          image={profileHero}
+        />
+      }
+    >
       {loading && <Loading label="Loading profile..." />}
       {error && !loading && (
         <ErrorPanel title="Unable to load profile" error={error} onRetry={() => refetch()} />
       )}
 
-      {data?.me && (
-        <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="rounded-2xl border border-white/10 bg-slate-900 p-6">
-            <h2 className="text-xl font-bold">Account details</h2>
+      {me && (
+        <section className="grid gap-6 lg:grid-cols-[1fr_380px]">
+          <div className="rounded-3xl border border-line bg-surface p-6">
+            <div className="flex items-center gap-4">
+              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sweep font-display text-3xl font-black italic">
+                {initials}
+              </span>
+              <div>
+                <p className="eyebrow text-accent">Account details</p>
+                <h2 className="font-display text-3xl font-extrabold uppercase italic">
+                  {me.name} {me.surname}
+                </h2>
+              </div>
+            </div>
 
-            <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
-                ['First name', data.me.name],
-                ['Surname', data.me.surname],
-                ['Email', data.me.email],
-                ['Mobile', data.me.mobile],
+                ['First name', me.name],
+                ['Surname', me.surname],
+                ['Email', me.email],
+                ['Mobile', me.mobile],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-xl bg-slate-800 p-4">
-                  <dt className="text-xs uppercase tracking-wider text-slate-400">{label}</dt>
-                  <dd className="mt-2 break-all font-semibold">{value}</dd>
+                <div key={label} className="rounded-2xl bg-raised p-4">
+                  <dt className="eyebrow text-white/50">{label}</dt>
+                  <dd className="mt-1.5 break-all font-bold">{value}</dd>
                 </div>
               ))}
             </dl>
           </div>
 
-          <aside className="rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-400/15 to-slate-900 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-              Favourite player
-            </p>
-            <h2 className="mt-3 text-3xl font-black">
-              {data.me.favouritePlayer || 'Not selected yet'}
-            </h2>
-            <p className="mt-3 text-sm text-slate-300">
+          <aside className="relative isolate overflow-hidden rounded-3xl border border-amber-300/30 bg-surface p-6">
+            <div className="absolute -right-10 -top-10 -z-10 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
+            <span className="font-display text-7xl font-black italic leading-none text-amber-300/90">★</span>
+            <p className="eyebrow mt-2 text-amber-300">Favourite player</p>
+            <h2 className="headline mt-2 text-5xl">{me.favouritePlayer || 'Not selected yet'}</h2>
+            <p className="mt-3 text-sm text-white/70">
               Choose or change your favourite player from the Players page.
             </p>
             <Link
               to="/players"
-              className="mt-6 inline-flex rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+              className="mt-6 inline-flex rounded-full bg-amber-300 px-5 py-3 text-sm font-extrabold text-black transition hover:bg-amber-200"
             >
-              Browse players
+              Browse players →
             </Link>
           </aside>
         </section>

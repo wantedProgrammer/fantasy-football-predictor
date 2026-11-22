@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 export type League = 'PREMIER_LEAGUE' | 'CHAMPIONS_LEAGUE';
@@ -32,6 +32,11 @@ function readStoredLeague(): League {
 
 export function LeagueProvider({ children }: { children: ReactNode }) {
   const [league, setLeagueState] = useState<League>(readStoredLeague);
+
+  // The colour theme (see index.css) follows the selected competition.
+  useEffect(() => {
+    document.documentElement.dataset.league = league;
+  }, [league]);
 
   function setLeague(next: League) {
     setLeagueState(next);

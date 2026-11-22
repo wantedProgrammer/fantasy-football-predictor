@@ -1,7 +1,171 @@
 @import "tailwindcss";
 
+/*
+ * Theme tokens. Each competition has its own mood:
+ *  - Premier League: deep plum with a cyan -> violet -> magenta sweep.
+ *  - Champions League: midnight navy and royal blue with a cyan highlight.
+ * The active one is chosen by <html data-league="...">, set in LeagueProvider.
+ */
+:root,
+:root[data-league="PREMIER_LEAGUE"] {
+  --ink: #1a0020;
+  --deep: #2a0031;
+  --surface: #2e0637;
+  --raised: #3f0f4a;
+  --line: rgb(255 255 255 / 0.09);
+  --accent: #05f0ff;
+  --on-accent: #1a0020;
+  --hot: #ff2882;
+  --lime: #00ff87;
+  --sweep: linear-gradient(100deg, #05e1ff 0%, #3d7bff 38%, #8b3cff 68%, #ff2882 100%);
+  --band: linear-gradient(180deg, #330039 0%, #22002a 100%);
+}
+
+:root[data-league="CHAMPIONS_LEAGUE"] {
+  --ink: #010826;
+  --deep: #04126b;
+  --surface: #08175a;
+  --raised: #102478;
+  --line: rgb(255 255 255 / 0.1);
+  --accent: #00e6ff;
+  --on-accent: #010826;
+  --hot: #6d8bff;
+  --lime: #3dffb0;
+  --sweep: linear-gradient(110deg, #1240ff 0%, #0a2bd0 40%, #061a8f 75%, #040f55 100%);
+  --band: linear-gradient(180deg, #0a2ad4 0%, #061c9c 100%);
+}
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+
+  --color-ink: var(--ink);
+  --color-deep: var(--deep);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-hot: var(--hot);
+  --color-lime: var(--lime);
+}
+
+html {
+  background-color: var(--ink);
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  background-color: #f3f4f6;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--ink);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease;
+}
+
+/* Big condensed italic headings, the "matchday programme" voice. */
+@utility headline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.92;
+}
+
+/* Condensed figures for stats and prices. */
+@utility stat {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+@utility eyebrow {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+@utility bg-sweep {
+  background-image: var(--sweep);
+}
+
+@utility bg-band {
+  background-image: var(--band);
+}
+
+@utility text-sweep {
+  background-image: var(--sweep);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Form controls shared across pages. */
+@utility field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background-color: var(--raised);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  &::placeholder {
+    color: rgb(255 255 255 / 0.35);
+    font-weight: 500;
+  }
+}
+
+select.field {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3E%3Cpath d='M5 7l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 0.9rem;
+}
+
+select.field option {
+  background-color: var(--surface);
+}
+
+/* Mown-grass pitch with alternating stripes. */
+@utility pitch {
+  background-color: #16924d;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 0.14), transparent 60%),
+    repeating-linear-gradient(180deg, #19a356 0 48px, #15904b 48px 96px);
+}
+
+/* Scrolling advertising-board text along the top of the pitch. */
+@keyframes board-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility board-track {
+  animation: board-scroll 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-track {
+    animation: none;
+  }
 }

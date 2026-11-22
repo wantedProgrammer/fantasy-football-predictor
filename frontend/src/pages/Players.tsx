@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 
 import AppLayout from '../components/AppLayout';
+import { Shirt } from '../components/Decor';
+import PageHero from '../components/PageHero';
 import { ErrorPanel, Loading } from '../components/QueryState';
 import { GET_PLAYERS } from '../graphql/players';
 import { ME, SET_FAVOURITE_PLAYER } from '../graphql/profile';
@@ -43,7 +45,19 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: 'none', label: 'No sorting' },
 ];
 
+const POSITION_FILTERS: { value: Position | 'ALL'; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'GK', label: 'GK' },
+  { value: 'DEF', label: 'DEF' },
+  { value: 'MID', label: 'MID' },
+  { value: 'FWD', label: 'FWD' },
+];
+
 const PAGE_SIZE = 48;
+
+/** Columns for the player list: player, price, projected, points, form, owned, favourite. */
+const ROW_GRID =
+  'grid grid-cols-[minmax(0,1fr)_4.5rem_4rem_2.75rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem_5rem_4.5rem_4rem_4.5rem_3rem] sm:gap-3';
 
 function shufflePlayers(players: Player[]): Player[] {
   const shuffled = [...players];
@@ -55,10 +69,6 @@ function shufflePlayers(players: Player[]): Player[] {
 
   return shuffled;
 }
-
-const selectClass =
-  'w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm outline-none focus:border-emerald-400';
-const labelClass = 'mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400';
 
 export default function Players() {
   const { league } = useLeague();
@@ -152,221 +162,261 @@ export default function Players() {
   }
 
   return (
-    <AppLayout>
-      <section className="relative mb-6 overflow-hidden rounded-3xl border border-white/10">
-        <img
-          src={league === 'PREMIER_LEAGUE' ? premierLeagueHero : championsLeagueHero}
-          alt=""
-          className="h-56 w-full object-cover sm:h-72"
+    <AppLayout
+      hero={
+        <PageHero
+          eyebrow={`${leagueLabel} · Live player data`}
+          title={
+            <>
+              Player <span className="text-accent">market</span>
+            </>
+          }
+          description="Every player with price, form and next-gameweek projection. Filter, sort and find your next transfer."
+          image={league === 'PREMIER_LEAGUE' ? premierLeagueHero : championsLeagueHero}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent" />
-        <div className="absolute inset-0 flex max-w-2xl flex-col justify-end p-6 sm:p-10">
-          <span className="mb-3 w-fit rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-300">
-            Live player data
-          </span>
-          <h1 className="text-3xl font-black sm:text-5xl">{leagueLabel} players</h1>
-          <p className="mt-3 max-w-xl text-sm text-slate-300 sm:text-base">
-            Every player with price, form and next-gameweek projection. Filter, sort and find your
-            next transfer.
+      }
+    >
+      <div className="overflow-hidden rounded-3xl border border-line bg-surface">
+        {/* Filter bar */}
+        <div className="grid gap-3 border-b border-line bg-band p-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
+          <label className="relative block">
+            <span className="sr-only">Search players</span>
+            <svg
+              viewBox="0 0 20 20"
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              aria-hidden="true"
+            >
+              <circle cx="9" cy="9" r="6" />
+              <path d="M14 14l4 4" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              placeholder="Search by player name"
+              className="field pl-10"
+            />
+          </label>
+
+          <label className="block">
+            <span className="sr-only">Team</span>
+            <select
+              value={selectedTeam}
+              onChange={(event) => {
+                setSelectedTeam(event.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              className="field"
+            >
+              <option value="ALL">All teams</option>
+              {teams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="sr-only">Sort by</span>
+            <select
+              value={sortKey}
+              onChange={(event) => {
+                setSortKey(event.target.value as SortKey);
+                setShuffleVersion(0);
+              }}
+              className="field"
+            >
+              {SORTS.map((sort) => (
+                <option key={sort.value} value={sort.value}>
+                  Sort: {sort.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShuffleVersion((current) => current + 1)}
+              className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-extrabold text-on-accent transition hover:brightness-110"
+            >
+              Shuffle
+            </button>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              title="Refresh data"
+              aria-label="Refresh data"
+              className="rounded-xl border border-white/15 bg-black/20 px-3 transition hover:bg-white/10"
+            >
+              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M16 10a6 6 0 1 1-1.8-4.3M16 4v3h-3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Position tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+          <div role="tablist" aria-label="Position" className="flex gap-1">
+            {POSITION_FILTERS.map((option) => {
+              const active = selectedPosition === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    setSelectedPosition(option.value);
+                    setVisibleCount(PAGE_SIZE);
+                  }}
+                  className={`relative px-3 py-1.5 font-display text-lg font-bold uppercase italic tracking-wide transition ${
+                    active ? 'text-accent' : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  {option.label}
+                  {active && <span className="absolute inset-x-2 -bottom-3 h-[3px] rounded-full bg-accent" />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs font-semibold text-white/55">
+            Showing {visiblePlayers.length} of {filteredPlayers.length} players
           </p>
         </div>
-      </section>
 
-      <section className="mb-6 grid gap-4 rounded-2xl border border-white/10 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-5">
-        <label className="block lg:col-span-2">
-          <span className={labelClass}>Search</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setVisibleCount(PAGE_SIZE);
-            }}
-            placeholder="Player name"
-            className={selectClass}
-          />
-        </label>
+        {favouriteMessage && (
+          <div className="border-b border-line bg-amber-300/10 px-5 py-3 text-sm font-semibold text-amber-200">
+            ★ {favouriteMessage}
+          </div>
+        )}
 
-        <label className="block">
-          <span className={labelClass}>Team</span>
-          <select
-            value={selectedTeam}
-            onChange={(event) => {
-              setSelectedTeam(event.target.value);
-              setVisibleCount(PAGE_SIZE);
-            }}
-            className={selectClass}
-          >
-            <option value="ALL">All teams</option>
-            {teams.map((team) => (
-              <option key={team} value={team}>
-                {team}
-              </option>
-            ))}
-          </select>
-        </label>
+        {loading && (
+          <div className="p-4">
+            <Loading label="Loading players..." />
+          </div>
+        )}
+        {error && !loading && (
+          <div className="p-4">
+            <ErrorPanel title="Unable to load players" error={error} onRetry={() => refetch()} />
+          </div>
+        )}
 
-        <label className="block">
-          <span className={labelClass}>Position</span>
-          <select
-            value={selectedPosition}
-            onChange={(event) => {
-              setSelectedPosition(event.target.value as Position | 'ALL');
-              setVisibleCount(PAGE_SIZE);
-            }}
-            className={selectClass}
-          >
-            <option value="ALL">All positions</option>
-            <option value="GK">Goalkeepers</option>
-            <option value="DEF">Defenders</option>
-            <option value="MID">Midfielders</option>
-            <option value="FWD">Forwards</option>
-          </select>
-        </label>
+        {!loading && !error && filteredPlayers.length === 0 && (
+          <div className="p-12 text-center text-white/55">No players match the selected filters.</div>
+        )}
 
-        <label className="block">
-          <span className={labelClass}>Sort by</span>
-          <select
-            value={sortKey}
-            onChange={(event) => {
-              setSortKey(event.target.value as SortKey);
-              setShuffleVersion(0);
-            }}
-            className={selectClass}
-          >
-            {SORTS.map((sort) => (
-              <option key={sort.value} value={sort.value}>
-                {sort.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
+        {!loading && !error && visiblePlayers.length > 0 && (
+          <div role="table" aria-label="Players">
+            <div
+              role="row"
+              className={`${ROW_GRID} eyebrow border-b border-line px-4 py-3 text-white/50`}
+            >
+              <span role="columnheader">Player</span>
+              <span role="columnheader" className="text-right text-accent">Price</span>
+              <span role="columnheader" className="text-right">Proj.</span>
+              <span role="columnheader" className="hidden text-right sm:block">Pts</span>
+              <span role="columnheader" className="hidden text-right sm:block">Form</span>
+              <span role="columnheader" className="hidden text-right sm:block">Owned</span>
+              <span role="columnheader" className="text-center">
+                <span className="sr-only">Favourite</span>★
+              </span>
+            </div>
 
-      {favouriteMessage && (
-        <div className="mb-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200">
-          {favouriteMessage}
-        </div>
-      )}
+            {visiblePlayers.map((player) => {
+              const isFavourite = favouritePlayer === player.displayName;
+              const doubtful = player.availability < 1;
 
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-400">
-          Showing {visiblePlayers.length} of {filteredPlayers.length} players
-        </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShuffleVersion((current) => current + 1)}
-            className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold transition hover:bg-indigo-400"
-          >
-            Shuffle
-          </button>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
-          >
-            Refresh data
-          </button>
-        </div>
-      </div>
-
-      {loading && <Loading label="Loading players..." />}
-      {error && !loading && (
-        <ErrorPanel title="Unable to load players" error={error} onRetry={() => refetch()} />
-      )}
-
-      {!loading && !error && filteredPlayers.length === 0 && (
-        <div className="rounded-2xl border border-white/10 bg-slate-900 p-12 text-center text-slate-400">
-          No players match the selected filters.
-        </div>
-      )}
-
-      {!loading && !error && visiblePlayers.length > 0 && (
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {visiblePlayers.map((player) => {
-            const isFavourite = favouritePlayer === player.displayName;
-
-            return (
-              <article
-                key={player.id}
-                className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition hover:border-emerald-400/50"
-              >
-                <div className="h-1.5 bg-gradient-to-r from-emerald-400 to-sky-500" />
-                <div className="flex flex-1 flex-col p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                        {player.team}
-                      </p>
-                      <h3 className="mt-1 truncate text-xl font-bold">{player.displayName}</h3>
-                      <p className="truncate text-sm text-slate-400">
-                        {player.firstName} {player.secondName}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-md px-2 py-1 text-xs font-bold ${POSITION_STYLES[player.position]}`}
-                    >
-                      {player.position}
+              return (
+                <div
+                  key={player.id}
+                  role="row"
+                  className={`${ROW_GRID} border-b border-line px-4 py-2.5 transition last:border-b-0 hover:bg-white/[0.04]`}
+                >
+                  <div role="cell" className="flex min-w-0 items-center gap-3">
+                    <span className="relative shrink-0">
+                      <Shirt teamShort={player.teamShort} goalkeeper={player.position === 'GK'} size={40} />
+                      {doubtful && (
+                        <span
+                          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-black"
+                          title={`${Math.round(player.availability * 100)}% chance of playing${player.news ? `: ${player.news}` : ''}`}
+                        >
+                          !
+                        </span>
+                      )}
                     </span>
-                  </div>
-
-                  {player.availability < 1 && (
-                    <p className="mt-3 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-                      {Math.round(player.availability * 100)}% chance of playing
-                      {player.news ? `: ${player.news}` : ''}
-                    </p>
-                  )}
-
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-xl bg-slate-800 p-2.5">
-                      <p className="text-lg font-black text-emerald-300">
-                        {formatPoints(player.predictedPoints)}
+                    <div className="min-w-0">
+                      <p className="truncate font-extrabold">{player.displayName}</p>
+                      <p className="flex items-center gap-1.5 truncate text-xs text-white/55">
+                        <span
+                          className={`rounded px-1 py-px text-[10px] font-extrabold ${POSITION_STYLES[player.position]}`}
+                        >
+                          {player.position}
+                        </span>
+                        <span className="truncate">{player.team}</span>
+                        <span className="hidden truncate md:inline">
+                          · {plural(player.goals, 'goal')}, {plural(player.assists, 'assist')}
+                        </span>
                       </p>
-                      <p className="text-[11px] text-slate-400">Projected</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-800 p-2.5">
-                      <p className="text-lg font-black text-amber-300">{player.totalPoints}</p>
-                      <p className="text-[11px] text-slate-400">Points</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-800 p-2.5">
-                      <p className="text-lg font-black">{formatPrice(currency, player.price)}</p>
-                      <p className="text-[11px] text-slate-400">Price</p>
+                      {doubtful && player.news && (
+                        <p className="truncate text-[11px] font-semibold text-amber-300">{player.news}</p>
+                      )}
                     </div>
                   </div>
 
-                  <p className="mt-3 text-xs text-slate-400">
-                    {plural(player.goals, 'goal')} · {plural(player.assists, 'assist')} · form {player.form.toFixed(1)} ·{' '}
-                    {player.selectedBy.toFixed(1)}% owned
-                  </p>
-
-                  <div className="mt-auto pt-4">
+                  <span role="cell" className="stat rounded-lg bg-accent/10 py-1.5 text-right text-lg text-accent sm:pr-2">
+                    {formatPrice(currency, player.price)}
+                  </span>
+                  <span role="cell" className="stat text-right text-xl">
+                    {formatPoints(player.predictedPoints)}
+                  </span>
+                  <span role="cell" className="stat hidden text-right text-xl text-white/80 sm:block">
+                    {player.totalPoints}
+                  </span>
+                  <span role="cell" className="stat hidden text-right text-xl text-white/80 sm:block">
+                    {player.form.toFixed(1)}
+                  </span>
+                  <span role="cell" className="stat hidden text-right text-xl text-white/80 sm:block">
+                    {player.selectedBy.toFixed(1)}%
+                  </span>
+                  <span role="cell" className="flex justify-center">
                     <button
                       type="button"
                       disabled={savingFavourite}
                       onClick={() => selectFavourite(player)}
-                      className={`w-full rounded-xl border py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                      aria-pressed={isFavourite}
+                      aria-label={isFavourite ? `${player.displayName} is your favourite` : `Make ${player.displayName} your favourite`}
+                      title={isFavourite ? 'Favourite player' : 'Select favourite'}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition disabled:cursor-not-allowed disabled:opacity-50 ${
                         isFavourite
-                          ? 'border-amber-300 bg-amber-300 text-slate-950'
-                          : 'border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20'
+                          ? 'bg-amber-300 text-black'
+                          : 'text-white/40 hover:bg-amber-300/15 hover:text-amber-300'
                       }`}
                     >
-                      {isFavourite ? '★ Favourite player' : '☆ Select favourite'}
+                      {isFavourite ? '★' : '☆'}
                     </button>
-                  </div>
+                  </span>
                 </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {!loading && !error && visibleCount < filteredPlayers.length && (
         <div className="mt-6 text-center">
           <button
             type="button"
             onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
-            className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/10"
+            className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-extrabold transition hover:border-accent hover:text-accent"
           >
             Show more players
           </button>
