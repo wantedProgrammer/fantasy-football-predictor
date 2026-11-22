@@ -1,0 +1,203 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type UserModel {
+  id: Int!
+  name: String!
+  surname: String!
+  email: String!
+  mobile: String!
+  favouritePlayer: String
+}
+
+type LoginResponse {
+  accessToken: String!
+}
+
+type PlayerModel {
+  id: String!
+  firstName: String!
+  secondName: String!
+  displayName: String!
+  totalPoints: Int!
+  team: String!
+  teamShort: String!
+  position: Position!
+
+  """Price in millions."""
+  price: Float!
+  goals: Int!
+  assists: Int!
+  cleanSheets: Int!
+  minutes: Int!
+  form: Float!
+  pointsPerGame: Float!
+
+  """Percentage of managers who own the player."""
+  selectedBy: Float!
+
+  """Chance (0-1) of being available next round."""
+  availability: Float!
+  news: String
+
+  """Transfers in during the current round."""
+  transfersIn: Int!
+
+  """Transfers out during the current round."""
+  transfersOut: Int!
+
+  """Projected points for the next gameweek."""
+  predictedPoints: Float!
+}
+
+enum Position {
+  GK
+  DEF
+  MID
+  FWD
+}
+
+type GameweekModel {
+  id: Int!
+  name: String!
+  deadline: String
+  isCurrent: Boolean!
+  isNext: Boolean!
+  finished: Boolean!
+}
+
+type SeasonModel {
+  league: League!
+  currency: String!
+  budget: Float!
+  maxPerTeam: Int!
+
+  """The next gameweek with an open deadline."""
+  defaultGameweek: Int!
+  gameweeks: [GameweekModel!]!
+  updatedAt: String!
+}
+
+enum League {
+  PREMIER_LEAGUE
+  CHAMPIONS_LEAGUE
+}
+
+type FixtureModel {
+  gameweek: Int!
+  opponent: String!
+  home: Boolean!
+
+  """1 (easiest) to 5 (hardest)."""
+  difficulty: Int!
+  kickoff: String
+}
+
+type ProjectedPlayerModel {
+  player: PlayerModel!
+  predictedPoints: Float!
+
+  """Probability (0-1) of starting."""
+  playProbability: Float!
+  fixtures: [FixtureModel!]!
+  reasons: [String!]!
+  isCaptain: Boolean!
+  isViceCaptain: Boolean!
+}
+
+type PredictedTeamModel {
+  league: League!
+  gameweek: Int!
+  gameweekName: String!
+
+  """Number of gameweeks the squad was optimised over."""
+  horizon: Int!
+  formation: String!
+  currency: String!
+  budget: Float!
+  totalCost: Float!
+  bank: Float!
+
+  """Starting XI projection, captain counted twice."""
+  predictedPoints: Float!
+  starters: [ProjectedPlayerModel!]!
+  bench: [ProjectedPlayerModel!]!
+}
+
+type TeamRunModel {
+  team: String!
+  teamShort: String!
+  averageDifficulty: Float!
+
+  """Goals scored relative to league average."""
+  attackRating: Float!
+
+  """Goals conceded relative to league average."""
+  defenceRating: Float!
+  fixtures: [FixtureModel!]!
+}
+
+type TipModel {
+  category: String!
+  title: String!
+  body: String!
+}
+
+type InsightsModel {
+  league: League!
+  gameweek: Int!
+  gameweekName: String!
+  currency: String!
+  tips: [TipModel!]!
+  captainPicks: [ProjectedPlayerModel!]!
+  differentials: [ProjectedPlayerModel!]!
+  valuePicks: [ProjectedPlayerModel!]!
+  inForm: [ProjectedPlayerModel!]!
+  injuryWatch: [ProjectedPlayerModel!]!
+  mostTransferredIn: [ProjectedPlayerModel!]!
+  mostTransferredOut: [ProjectedPlayerModel!]!
+  fixtureTicker: [TeamRunModel!]!
+}
+
+type Query {
+  health: String!
+  me: UserModel!
+  players(league: League!): [PlayerModel!]!
+
+  """Gameweeks, budget and squad rules for a competition."""
+  season(league: League!): SeasonModel!
+
+  """
+  The highest-projected legal 15-man squad, starting XI and captain for a gameweek.
+  """
+  predictedTeam(
+    league: League!
+    gameweek: Int
+
+    """Optimise over this many gameweeks (1-5). Defaults to 1."""
+    horizon: Int
+  ): PredictedTeamModel!
+
+  """Captain picks, differentials, fixtures and tips for a gameweek."""
+  insights(league: League!, gameweek: Int): InsightsModel!
+}
+
+type Mutation {
+  register(input: RegisterInput!): UserModel!
+  login(input: LoginInput!): LoginResponse!
+  setFavouritePlayer(player: String!): UserModel!
+}
+
+input RegisterInput {
+  name: String!
+  surname: String!
+  email: String!
+  mobile: String!
+  password: String!
+}
+
+input LoginInput {
+  mobile: String!
+  password: String!
+}
