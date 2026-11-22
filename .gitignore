@@ -1,0 +1,16 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+*.tsbuildinfo
+coverage
+
+# Local data and secrets
+*.sqlite
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
