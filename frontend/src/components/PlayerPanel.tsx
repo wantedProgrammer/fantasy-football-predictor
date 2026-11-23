@@ -100,7 +100,7 @@ export default function PlayerPanel({
         <h2 className="mt-3 flex flex-wrap items-center gap-2 text-3xl font-semibold tracking-tight">
           {player.displayName}
           {item.isCaptain && (
-            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-[#04130c]">Captain</span>
+            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-[#03140d]">Captain</span>
           )}
           {item.isViceCaptain && (
             <span className="rounded-full border border-line px-2 py-0.5 text-xs font-semibold text-ink/80">

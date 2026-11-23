@@ -112,7 +112,7 @@ export default function AppLayout({ children, header, gameweekApplies = true }: 
                   <>
                     {item.label}
                     {isActive && (
-                      <span className="bg-accent absolute inset-x-3.5 -bottom-[11px] h-px shadow-[0_0_10px_rgb(60_245_160/0.8)]" />
+                      <span className="bg-accent absolute inset-x-3.5 -bottom-[11px] h-px shadow-[0_0_10px_rgb(33_227_138/0.8)]" />
                     )}
                   </>
                 )}

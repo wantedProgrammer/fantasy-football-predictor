@@ -85,7 +85,7 @@ function StarButton({
       aria-label={active ? `${name} is your favourite player` : `Set ${name} as favourite player`}
       title={active ? 'Favourite player' : 'Set as favourite'}
       className={`flex h-8 w-8 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
-        active ? 'text-mint drop-shadow-[0_0_8px_rgb(60_245_160/0.8)]' : 'text-faint hover:bg-white/[0.06] hover:text-ink'
+        active ? 'text-mint drop-shadow-[0_0_8px_rgb(33_227_138/0.8)]' : 'text-faint hover:bg-white/[0.06] hover:text-ink'
       }`}
     >
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">

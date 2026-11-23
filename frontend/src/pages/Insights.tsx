@@ -135,7 +135,7 @@ function CaptainShortlist({ picks, onSelect }: { picks: ProjectedPlayer[]; onSel
             </span>
             <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-white/[0.06]">
               <span
-                className={`animate-grow block h-full rounded-full ${index === 0 ? 'bg-accent shadow-[0_0_12px_rgb(60_245_160/0.6)]' : 'bg-white/25'}`}
+                className={`animate-grow block h-full rounded-full ${index === 0 ? 'bg-accent shadow-[0_0_12px_rgb(33_227_138/0.6)]' : 'bg-white/25'}`}
                 style={{ width: `${(item.predictedPoints / max) * 100}%`, animationDelay: `${200 + index * 80}ms` }}
               />
             </span>
