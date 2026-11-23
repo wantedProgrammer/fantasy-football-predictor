@@ -1,11 +1,17 @@
-import { useQuery } from '@apollo/client';
-import { Link } from 'react-router-dom';
+import { useApolloClient, useQuery } from '@apollo/client';
+import { Link, useNavigate } from 'react-router-dom';
 
 import AppLayout from '../components/AppLayout';
-import PageHero from '../components/PageHero';
-import { ErrorPanel, Loading } from '../components/QueryState';
+import PageHeader from '../components/PageHeader';
+import { FormSparkline } from '../components/PlayerPanel';
+import { CountUp, GlowBackdrop } from '../components/motion';
+import { ErrorPanel } from '../components/QueryState';
+import { EmptyState, PositionTag, Skeleton, TeamChip, buttonGhost, buttonPrimary } from '../components/ui';
+import { GET_PLAYERS } from '../graphql/players';
 import { ME } from '../graphql/profile';
-import profileHero from '../assets/2025-05-07t205629z_288169850_up1el571m63cj_rtrmadp_3_soccer-champions-psg-ars-report.jpg';
+import { LEAGUES, useLeague } from '../lib/league';
+import { POSITION_LABELS, formatPrice } from '../lib/format';
+import type { Position } from '../lib/format';
 
 type UserProfile = {
   id: number;
@@ -16,75 +22,176 @@ type UserProfile = {
   favouritePlayer?: string | null;
 };
 
+type PlayerStats = {
+  id: string;
+  displayName: string;
+  firstName: string;
+  secondName: string;
+  team: string;
+  teamShort: string;
+  position: Position;
+  price: number;
+  totalPoints: number;
+  form: number;
+  selectedBy: number;
+  availability: number;
+  news: string | null;
+  predictedPoints: number;
+  goals: number;
+  assists: number;
+};
+
+function FavouriteCard({ name }: { name: string }) {
+  const { league, currency } = useLeague();
+  const { data, loading } = useQuery<{ players: PlayerStats[] }>(GET_PLAYERS, { variables: { league } });
+  const player = data?.players.find((item) => item.displayName === name);
+  const otherLeague = LEAGUES.find((item) => item.id !== league)?.label;
+
+  if (loading) {
+    return <Skeleton className="h-[26rem] rounded-3xl" />;
+  }
+
+  return (
+    <section className="glass relative isolate overflow-hidden rounded-3xl p-6 sm:p-8">
+      <GlowBackdrop className="-z-10" intensity={0.7} />
+      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted">
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-mint" fill="currentColor" aria-hidden="true">
+          <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" />
+        </svg>
+        Favourite player
+      </p>
+
+      <h2 className="mt-3 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">{name}</h2>
+
+      {!player ? (
+        <p className="mt-3 max-w-md text-sm text-muted">
+          {name} isn't in this competition's player list. Switch to the {otherLeague} to see their stats, or pick a new
+          favourite here.
+        </p>
+      ) : (
+        <>
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <TeamChip code={player.teamShort} size="sm" />
+            {player.team}
+            <PositionTag position={player.position} />
+            <span className="text-faint">{POSITION_LABELS[player.position]}</span>
+          </p>
+
+          <div className="mt-8 grid gap-8 lg:grid-cols-[auto_1fr] lg:items-end">
+            <div>
+              <p className="text-xs text-muted">Projected next gameweek</p>
+              <CountUp value={player.predictedPoints} className="text-accent text-7xl font-semibold leading-none tracking-[-0.04em]" />
+            </div>
+            <div>
+              <p className="mb-2 text-xs text-muted">Recent form</p>
+              <FormSparkline league={league} playerId={player.id} form={player.form} height={70} />
+            </div>
+          </div>
+
+          <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {[
+              ['Price', formatPrice(currency, player.price)],
+              ['Total points', String(player.totalPoints)],
+              ['Form', player.form.toFixed(1)],
+              ['Owned', `${player.selectedBy.toFixed(1)}%`],
+              ['Goals · assists', `${player.goals} · ${player.assists}`],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-white/[0.04] px-3 py-2.5">
+                <dt className="text-[11px] text-muted">{label}</dt>
+                <dd className="num mt-0.5 text-lg font-semibold">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {player.availability < 1 && (
+            <p className="mt-4 rounded-xl bg-warn/10 px-3 py-2 text-sm text-warn">
+              {Math.round(player.availability * 100)}% chance of playing{player.news ? `: ${player.news}` : ''}
+            </p>
+          )}
+        </>
+      )}
+
+      <Link to="/players" className={`${buttonGhost} mt-6`}>
+        Change favourite
+      </Link>
+    </section>
+  );
+}
+
 export default function Profile() {
-  const { data, loading, error, refetch } = useQuery<{ me: UserProfile }>(ME, {
-    fetchPolicy: 'network-only',
-  });
+  const navigate = useNavigate();
+  const client = useApolloClient();
+  const { data, loading, error, refetch } = useQuery<{ me: UserProfile }>(ME, { fetchPolicy: 'network-only' });
   const me = data?.me;
-  const initials = me ? `${me.name.charAt(0)}${me.surname.charAt(0)}`.toUpperCase() : '';
+
+  async function logout() {
+    sessionStorage.removeItem('token');
+    await client.clearStore();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <AppLayout
-      showLeagueSwitcher={false}
-      hero={
-        <PageHero
-          eyebrow="Manager profile"
-          title={me ? `${me.name} ${me.surname}` : 'Your account'}
-          image={profileHero}
+      gameweekApplies={false}
+      header={
+        <PageHeader
+          eyebrow="Your account"
+          title={me ? `Hi, ${me.name}` : 'Your profile'}
+          accentWords={me ? [me.name] : []}
         />
       }
     >
-      {loading && <Loading label="Loading profile..." />}
-      {error && !loading && (
-        <ErrorPanel title="Unable to load profile" error={error} onRetry={() => refetch()} />
+      {loading && (
+        <div aria-busy="true" aria-label="Loading profile" className="grid gap-6 lg:grid-cols-[340px_1fr]">
+          <Skeleton className="h-72 rounded-3xl" />
+          <Skeleton className="h-[26rem] rounded-3xl" />
+        </div>
       )}
+      {error && !loading && <ErrorPanel title="Unable to load profile" error={error} onRetry={() => refetch()} />}
 
-      {me && (
-        <section className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          <div className="rounded-3xl border border-line bg-surface p-6">
-            <div className="flex items-center gap-4">
-              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sweep font-display text-3xl font-black italic">
-                {initials}
-              </span>
-              <div>
-                <p className="eyebrow text-accent">Account details</p>
-                <h2 className="font-display text-3xl font-extrabold uppercase italic">
+      {me && !loading && (
+        <div className="grid gap-6 lg:grid-cols-[340px_1fr] lg:items-start">
+          <section className="glass rounded-3xl p-6">
+            <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Account</h2>
+            <p className="mt-4 text-xs text-muted">Mobile number</p>
+            <p className="num mt-0.5 font-mono text-2xl font-semibold tracking-tight">{me.mobile}</p>
+
+            <dl className="mt-5 space-y-3 border-t border-line pt-5 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">Name</dt>
+                <dd className="truncate font-medium">
                   {me.name} {me.surname}
-                </h2>
+                </dd>
               </div>
-            </div>
-
-            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
-              {[
-                ['First name', me.name],
-                ['Surname', me.surname],
-                ['Email', me.email],
-                ['Mobile', me.mobile],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-2xl bg-raised p-4">
-                  <dt className="eyebrow text-white/50">{label}</dt>
-                  <dd className="mt-1.5 break-all font-bold">{value}</dd>
-                </div>
-              ))}
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">Email</dt>
+                <dd className="truncate font-medium">{me.email}</dd>
+              </div>
             </dl>
-          </div>
 
-          <aside className="relative isolate overflow-hidden rounded-3xl border border-amber-300/30 bg-surface p-6">
-            <div className="absolute -right-10 -top-10 -z-10 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
-            <span className="font-display text-7xl font-black italic leading-none text-amber-300/90">★</span>
-            <p className="eyebrow mt-2 text-amber-300">Favourite player</p>
-            <h2 className="headline mt-2 text-5xl">{me.favouritePlayer || 'Not selected yet'}</h2>
-            <p className="mt-3 text-sm text-white/70">
-              Choose or change your favourite player from the Players page.
-            </p>
-            <Link
-              to="/players"
-              className="mt-6 inline-flex rounded-full bg-amber-300 px-5 py-3 text-sm font-extrabold text-black transition hover:bg-amber-200"
-            >
-              Browse players →
-            </Link>
-          </aside>
-        </section>
+            <button type="button" onClick={logout} className={`${buttonGhost} mt-6 w-full hover:!border-warn/40 hover:!text-warn`}>
+              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 4H4v12h4M13 6l4 4-4 4M17 10H8" />
+              </svg>
+              Log out
+            </button>
+          </section>
+
+          {me.favouritePlayer ? (
+            <FavouriteCard name={me.favouritePlayer} />
+          ) : (
+            <EmptyState
+              icon="star"
+              title="No favourite player yet"
+              body="Star a player on the Players page to pin their stats and form here."
+              action={
+                <Link to="/players" className={buttonPrimary}>
+                  Browse players
+                </Link>
+              }
+            />
+          )}
+        </div>
       )}
     </AppLayout>
   );
