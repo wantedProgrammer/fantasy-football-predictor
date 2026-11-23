@@ -1,171 +1,323 @@
 @import "tailwindcss";
 
 /*
- * Theme tokens. Each competition has its own mood:
- *  - Premier League: deep plum with a cyan -> violet -> magenta sweep.
- *  - Champions League: midnight navy and royal blue with a cyan highlight.
- * The active one is chosen by <html data-league="...">, set in LeagueProvider.
+ * Fantasy Predictor design tokens.
+ * Near-black canvas, off-white text, one electric green -> teal accent for
+ * positive / high-value data and a warm orange-red for warnings and injuries.
  */
-:root,
-:root[data-league="PREMIER_LEAGUE"] {
-  --ink: #1a0020;
-  --deep: #2a0031;
-  --surface: #2e0637;
-  --raised: #3f0f4a;
-  --line: rgb(255 255 255 / 0.09);
-  --accent: #05f0ff;
-  --on-accent: #1a0020;
-  --hot: #ff2882;
-  --lime: #00ff87;
-  --sweep: linear-gradient(100deg, #05e1ff 0%, #3d7bff 38%, #8b3cff 68%, #ff2882 100%);
-  --band: linear-gradient(180deg, #330039 0%, #22002a 100%);
-}
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 
-:root[data-league="CHAMPIONS_LEAGUE"] {
-  --ink: #010826;
-  --deep: #04126b;
-  --surface: #08175a;
-  --raised: #102478;
-  --line: rgb(255 255 255 / 0.1);
-  --accent: #00e6ff;
-  --on-accent: #010826;
-  --hot: #6d8bff;
-  --lime: #3dffb0;
-  --sweep: linear-gradient(110deg, #1240ff 0%, #0a2bd0 40%, #061a8f 75%, #040f55 100%);
-  --band: linear-gradient(180deg, #0a2ad4 0%, #061c9c 100%);
-}
+  --color-bg: #0a0a0a;
+  --color-ink: #ededea;
+  --color-muted: #8b8b86;
+  --color-faint: #5a5a56;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-panel: rgb(255 255 255 / 0.035);
+  --color-mint: #3cf5a0;
+  --color-teal: #19d3c5;
+  --color-warn: #ff6a3d;
+  --color-pitch: #07130d;
 
-@theme inline {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
-
-  --color-ink: var(--ink);
-  --color-deep: var(--deep);
-  --color-surface: var(--surface);
-  --color-raised: var(--raised);
-  --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-on-accent: var(--on-accent);
-  --color-hot: var(--hot);
-  --color-lime: var(--lime);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
-  background-color: var(--ink);
+  background-color: var(--color-bg);
   color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  background-color: var(--ink);
-  color: #fff;
+  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.3s ease;
 }
 
-/* Big condensed italic headings, the "matchday programme" voice. */
-@utility headline {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 0.92;
+/* Subtle film grain over the whole canvas. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Condensed figures for stats and prices. */
-@utility stat {
-  font-family: var(--font-display);
-  font-weight: 800;
+::selection {
+  background: rgb(60 245 160 / 0.3);
+}
+
+/* ---------- Utilities ---------- */
+
+/* Big confident numbers with aligned digits. */
+@utility num {
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.02em;
 }
 
-@utility eyebrow {
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-}
-
-@utility bg-sweep {
-  background-image: var(--sweep);
-}
-
-@utility bg-band {
-  background-image: var(--band);
-}
-
-@utility text-sweep {
-  background-image: var(--sweep);
+@utility text-accent {
+  background-image: linear-gradient(100deg, var(--color-mint) 0%, var(--color-teal) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* Form controls shared across pages. */
+@utility bg-accent {
+  background-image: linear-gradient(100deg, var(--color-mint) 0%, var(--color-teal) 100%);
+}
+
+/* Glassy surface with a soft border and a faint top highlight. */
+@utility glass {
+  background-color: rgb(255 255 255 / 0.035);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 20px 40px -24px rgb(0 0 0 / 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Form controls. */
 @utility field {
   width: 100%;
   border-radius: 0.75rem;
-  border: 1px solid var(--line);
-  background-color: var(--raised);
-  padding: 0.75rem 1rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background-color: rgb(255 255 255 / 0.04);
+  padding: 0.7rem 0.95rem;
   font-size: 0.875rem;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 500;
+  color: var(--color-ink);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+
+  &:hover {
+    background-color: rgb(255 255 255 / 0.06);
+  }
 
   &:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+    border-color: rgb(60 245 160 / 0.6);
+    box-shadow: 0 0 0 3px rgb(60 245 160 / 0.15);
   }
 
   &::placeholder {
-    color: rgb(255 255 255 / 0.35);
-    font-weight: 500;
+    color: var(--color-faint);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 }
 
 select.field {
   appearance: none;
-  padding-right: 2.5rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3E%3Cpath d='M5 7l5 6 5-6z'/%3E%3C/svg%3E");
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238b8b86' stroke-width='2'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.9rem center;
-  background-size: 0.9rem;
+  background-position: right 0.7rem center;
+  background-size: 1rem;
 }
 
 select.field option {
-  background-color: var(--surface);
+  background-color: #141414;
 }
 
-/* Mown-grass pitch with alternating stripes. */
-@utility pitch {
-  background-color: #16924d;
-  background-image:
-    radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 0.14), transparent 60%),
-    repeating-linear-gradient(180deg, #19a356 0 48px, #15904b 48px 96px);
+/* Interactive card that tilts toward the pointer and glows where it is. */
+@utility tilt {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition:
+    transform 0.25s var(--ease-out-expo),
+    border-color 0.25s,
+    box-shadow 0.25s;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s;
+    background: radial-gradient(260px circle at var(--mx) var(--my), rgb(60 245 160 / 0.13), transparent 60%);
+  }
+
+  &:hover {
+    border-color: rgb(60 245 160 / 0.28);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 24px 50px -20px rgb(25 211 197 / 0.25);
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
 }
 
-/* Scrolling advertising-board text along the top of the pitch. */
-@keyframes board-scroll {
+/* ---------- Motion ---------- */
+
+@keyframes word-in {
   from {
-    transform: translateX(0);
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(0.35em);
   }
   to {
-    transform: translateX(-50%);
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
   }
 }
 
-@utility board-track {
-  animation: board-scroll 28s linear infinite;
+@keyframes drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes flow-a {
+  0% {
+    transform: translate(-10%, -6%) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(12%, 8%) rotate(40deg) scale(1.15);
+  }
+  100% {
+    transform: translate(-4%, 10%) rotate(80deg) scale(0.95);
+  }
+}
+
+@keyframes flow-b {
+  0% {
+    transform: translate(8%, 6%) scale(1.1);
+  }
+  50% {
+    transform: translate(-14%, -4%) scale(0.9);
+  }
+  100% {
+    transform: translate(6%, -10%) scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.6);
+  }
+}
+
+@utility animate-word {
+  display: inline-block;
+  animation: word-in 0.7s var(--ease-out-expo) both;
+}
+
+@utility animate-drop {
+  animation: drop-in 0.6s var(--ease-spring) both;
+}
+
+@utility animate-fade-up {
+  animation: fade-up 0.6s var(--ease-out-expo) both;
+}
+
+@utility animate-draw {
+  stroke-dasharray: 1;
+  animation: draw 1.4s var(--ease-out-expo) both;
+}
+
+@utility animate-grow {
+  transform-origin: left center;
+  animation: grow-x 0.9s var(--ease-out-expo) both;
+}
+
+@utility animate-pulse-dot {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@utility skeleton {
+  border-radius: 0.6rem;
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.04) 25%,
+    rgb(255 255 255 / 0.09) 50%,
+    rgb(255 255 255 / 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .board-track {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .tilt {
+    transform: none !important;
   }
 }

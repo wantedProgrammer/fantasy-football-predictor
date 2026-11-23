@@ -7,20 +7,21 @@ export const POSITION_LABELS: Record<Position, string> = {
   FWD: 'Forward',
 };
 
+/** Position tags: neutral glass chip with a position-coloured label. */
 export const POSITION_STYLES: Record<Position, string> = {
-  GK: 'bg-amber-300 text-amber-950',
-  DEF: 'bg-accent text-on-accent',
-  MID: 'bg-lime text-emerald-950',
-  FWD: 'bg-hot text-white',
+  GK: 'bg-white/[0.06] text-[#f5c451]',
+  DEF: 'bg-white/[0.06] text-[#7cc8ff]',
+  MID: 'bg-white/[0.06] text-mint',
+  FWD: 'bg-white/[0.06] text-[#ff9b78]',
 };
 
-/** Fixture difficulty colours, 1 (easiest) to 5 (hardest), in the familiar FDR scale. */
+/** Fixture difficulty, 1 (easiest) to 5 (hardest), green through to red. */
 export const DIFFICULTY_STYLES: Record<number, string> = {
-  1: 'bg-[#257d3f] text-white',
-  2: 'bg-[#01fc7a] text-[#0b2a16]',
-  3: 'bg-[#e7e7e7] text-[#26262b]',
-  4: 'bg-[#ff1751] text-white',
-  5: 'bg-[#80072d] text-white',
+  1: 'bg-[#1fcb7a] text-[#03170c]',
+  2: 'bg-[#1fcb7a]/30 text-[#7df0b6]',
+  3: 'bg-white/[0.07] text-muted',
+  4: 'bg-[#ff6a3d]/30 text-[#ffb59a]',
+  5: 'bg-[#e5484d] text-white',
 };
 
 /** Home-kit colours for clubs, keyed by short name. Unknown clubs get a stable hashed colour. */
