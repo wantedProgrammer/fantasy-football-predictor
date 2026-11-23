@@ -189,8 +189,5 @@ export function FooterNote() {
   );
 }
 
-export const buttonPrimary =
-  'inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-[#03140d] shadow-[0_8px_30px_-8px_rgb(33_227_138/0.6)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50';
-
 export const buttonGhost =
   'inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white/[0.03] px-4 py-2 text-sm font-medium text-ink transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50';

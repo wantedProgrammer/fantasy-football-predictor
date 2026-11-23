@@ -152,41 +152,6 @@ export function TiltCard({
   );
 }
 
-/** Slowly flowing green/teal glow, placed behind hero areas. */
-export function GlowBackdrop({ className = '', intensity = 1 }: { className?: string; intensity?: number }) {
-  return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
-      <div
-        className="absolute -left-[10%] -top-[40%] h-[140%] w-[60%] rounded-full blur-[90px]"
-        style={{
-          background: 'radial-gradient(circle, rgb(168 220 98 / 0.5), transparent 65%)',
-          opacity: 0.32 * intensity,
-          animation: 'flow-a 22s ease-in-out infinite alternate',
-        }}
-      />
-      <div
-        className="absolute -right-[5%] -top-[30%] h-[130%] w-[55%] rounded-full blur-[100px]"
-        style={{
-          background: 'radial-gradient(circle, rgb(25 209 177 / 0.6), transparent 65%)',
-          opacity: 0.26 * intensity,
-          animation: 'flow-b 26s ease-in-out infinite alternate',
-        }}
-      />
-      {/* Fine grid lines, like an analytics canvas */}
-      <div
-        className="absolute inset-0 opacity-[0.35]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          maskImage: 'radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%)',
-          WebkitMaskImage: 'radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%)',
-        }}
-      />
-    </div>
-  );
-}
-
 /**
  * Hero artwork: near-black pitch with a glowing lime-to-teal wave, drifting
  * slowly. Overlays keep text on the left readable.
@@ -194,13 +159,10 @@ export function GlowBackdrop({ className = '', intensity = 1 }: { className?: st
 export function HeroBackdrop({
   className = '',
   position = '75% 55%',
-  focus = 'left',
 }: {
   className?: string;
   /** CSS object-position for the artwork. */
   position?: string;
-  /** Where text sits: darken that side (left) or the centre (for a centred card). */
-  focus?: 'left' | 'center';
 }) {
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden bg-bg ${className}`}>
@@ -213,18 +175,9 @@ export function HeroBackdrop({
         className="animate-hero-drift absolute inset-0 h-full w-full object-cover"
         style={{ objectPosition: position }}
       />
-      {focus === 'left' ? (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/70 to-bg/0" />
-          {/* On phones the text spans the full width, so dim the artwork further */}
-          <div className="absolute inset-0 bg-bg/50 sm:hidden" />
-        </>
-      ) : (
-        <div
-          className="absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgb(10 12 12 / 0.75), rgb(10 12 12 / 0.15) 75%)' }}
-        />
-      )}
+      <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/70 to-bg/0" />
+      {/* On phones the text spans the full width, so dim the artwork further */}
+      <div className="absolute inset-0 bg-bg/50 sm:hidden" />
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg to-transparent" />
     </div>
   );
