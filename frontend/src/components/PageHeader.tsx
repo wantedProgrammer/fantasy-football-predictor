@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { GlowBackdrop, RevealText } from './motion';
+import { HeroBackdrop, RevealText } from './motion';
 
 /** Hero area at the top of each page: flowing glow, word-by-word headline. */
 export default function PageHeader({
@@ -19,12 +19,12 @@ export default function PageHeader({
 }) {
   return (
     <section className="relative isolate overflow-hidden border-b border-line">
-      <GlowBackdrop className="-z-10" />
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-8 pt-10 sm:px-6 sm:pt-14 lg:flex-row lg:items-end lg:justify-between">
+      <HeroBackdrop className="-z-10" />
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-10 pt-12 sm:px-6 sm:pb-12 sm:pt-16 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           {eyebrow && (
             <p className="animate-fade-up flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-mint shadow-[0_0_8px_rgb(60_245_160)]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-mint shadow-[0_0_8px_rgb(33_227_138)]" />
               {eyebrow}
             </p>
           )}

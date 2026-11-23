@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { GlowBackdrop, RevealText } from './motion';
+import { HeroBackdrop, RevealText } from './motion';
 import { FooterNote, Logo } from './ui';
 
 /** Centred card on an animated gradient, shared by the login and registration pages. */
@@ -17,7 +17,7 @@ export default function AuthShell({
 }) {
   return (
     <main className="relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden bg-bg px-4 py-12 text-ink">
-      <GlowBackdrop className="-z-10" intensity={1.3} />
+      <HeroBackdrop className="-z-10" position="62% 50%" focus="center" />
 
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
@@ -61,4 +61,4 @@ export function FormError({ message }: { message: string }) {
 }
 
 export const primaryButton =
-  'w-full rounded-full bg-accent py-3 text-sm font-semibold text-[#04130c] shadow-[0_10px_30px_-10px_rgb(60_245_160/0.7)] transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full rounded-full bg-accent py-3 text-sm font-semibold text-[#03140d] shadow-[0_10px_30px_-10px_rgb(33_227_138/0.7)] transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50';

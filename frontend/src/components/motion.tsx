@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent, ReactNode } from 'react';
 
+import heroWave from '../assets/hero-wave.webp';
+import heroWaveSmall from '../assets/hero-wave-1280.webp';
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -156,7 +159,7 @@ export function GlowBackdrop({ className = '', intensity = 1 }: { className?: st
       <div
         className="absolute -left-[10%] -top-[40%] h-[140%] w-[60%] rounded-full blur-[90px]"
         style={{
-          background: 'radial-gradient(circle, rgb(60 245 160 / 0.55), transparent 65%)',
+          background: 'radial-gradient(circle, rgb(168 220 98 / 0.5), transparent 65%)',
           opacity: 0.32 * intensity,
           animation: 'flow-a 22s ease-in-out infinite alternate',
         }}
@@ -164,7 +167,7 @@ export function GlowBackdrop({ className = '', intensity = 1 }: { className?: st
       <div
         className="absolute -right-[5%] -top-[30%] h-[130%] w-[55%] rounded-full blur-[100px]"
         style={{
-          background: 'radial-gradient(circle, rgb(25 211 197 / 0.6), transparent 65%)',
+          background: 'radial-gradient(circle, rgb(25 209 177 / 0.6), transparent 65%)',
           opacity: 0.26 * intensity,
           animation: 'flow-b 26s ease-in-out infinite alternate',
         }}
@@ -180,6 +183,49 @@ export function GlowBackdrop({ className = '', intensity = 1 }: { className?: st
           WebkitMaskImage: 'radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%)',
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Hero artwork: near-black pitch with a glowing lime-to-teal wave, drifting
+ * slowly. Overlays keep text on the left readable.
+ */
+export function HeroBackdrop({
+  className = '',
+  position = '75% 55%',
+  focus = 'left',
+}: {
+  className?: string;
+  /** CSS object-position for the artwork. */
+  position?: string;
+  /** Where text sits: darken that side (left) or the centre (for a centred card). */
+  focus?: 'left' | 'center';
+}) {
+  return (
+    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden bg-bg ${className}`}>
+      <img
+        src={heroWave}
+        srcSet={`${heroWaveSmall} 1280w, ${heroWave} 2400w`}
+        sizes="100vw"
+        alt=""
+        decoding="async"
+        className="animate-hero-drift absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition: position }}
+      />
+      {focus === 'left' ? (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/70 to-bg/0" />
+          {/* On phones the text spans the full width, so dim the artwork further */}
+          <div className="absolute inset-0 bg-bg/50 sm:hidden" />
+        </>
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgb(10 12 12 / 0.75), rgb(10 12 12 / 0.15) 75%)' }}
+        />
+      )}
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg to-transparent" />
     </div>
   );
 }
@@ -231,12 +277,12 @@ export function Sparkline({
     >
       <defs>
         <linearGradient id={`${id}-stroke`} x1="0" x2="1">
-          <stop offset="0" stopColor="#3cf5a0" />
-          <stop offset="1" stopColor="#19d3c5" />
+          <stop offset="0" stopColor="#21e38a" />
+          <stop offset="1" stopColor="#19d1b1" />
         </linearGradient>
         <linearGradient id={`${id}-fill`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#3cf5a0" stopOpacity="0.25" />
-          <stop offset="1" stopColor="#3cf5a0" stopOpacity="0" />
+          <stop offset="0" stopColor="#21e38a" stopOpacity="0.25" />
+          <stop offset="1" stopColor="#21e38a" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={area} fill={`url(#${id}-fill)`} className="animate-fade-up" style={{ animationDelay: '0.5s' }} />
@@ -250,8 +296,8 @@ export function Sparkline({
         strokeLinejoin="round"
         className="animate-draw"
       />
-      <circle cx={lastX} cy={lastY} r="6" fill="#19d3c5" opacity="0.3" className="animate-pulse-dot" />
-      <circle cx={lastX} cy={lastY} r="3" fill="#19d3c5" />
+      <circle cx={lastX} cy={lastY} r="6" fill="#19d1b1" opacity="0.3" className="animate-pulse-dot" />
+      <circle cx={lastX} cy={lastY} r="3" fill="#19d1b1" />
     </svg>
   );
 }
