@@ -1,7 +1,5 @@
-import { UseGuards } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 
-import { JwtAuthGuard } from '../Auth/jwt-auth.guard';
 import { League } from '../Players/models/league.enum';
 import {
   InsightsModel,
@@ -11,7 +9,6 @@ import {
 import { PredictorService } from './predictor.service';
 
 @Resolver()
-@UseGuards(JwtAuthGuard)
 export class PredictorResolver {
   constructor(private readonly predictorService: PredictorService) {}
 

@@ -2,19 +2,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type UserModel {
-  id: Int!
-  name: String!
-  surname: String!
-  email: String!
-  mobile: String!
-  favouritePlayer: String
-}
-
-type LoginResponse {
-  accessToken: String!
-}
-
 type PlayerModel {
   id: String!
   firstName: String!
@@ -183,8 +170,6 @@ type InsightsModel {
 }
 
 type Query {
-  health: String!
-  me: UserModel!
   players(league: League!): [PlayerModel!]!
 
   """Recent per-gameweek points for one player (form sparkline)."""
@@ -206,23 +191,4 @@ type Query {
 
   """Captain picks, differentials, fixtures and tips for a gameweek."""
   insights(league: League!, gameweek: Int): InsightsModel!
-}
-
-type Mutation {
-  register(input: RegisterInput!): UserModel!
-  login(input: LoginInput!): LoginResponse!
-  setFavouritePlayer(player: String!): UserModel!
-}
-
-input RegisterInput {
-  name: String!
-  surname: String!
-  email: String!
-  mobile: String!
-  password: String!
-}
-
-input LoginInput {
-  mobile: String!
-  password: String!
 }
