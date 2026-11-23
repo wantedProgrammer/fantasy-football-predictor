@@ -1,34 +1,86 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useApolloClient } from '@apollo/client';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 
-import logo from '../assets/logo.svg';
 import { LEAGUES, useLeague } from '../lib/league';
+import GameweekPicker from './GameweekPicker';
+import { FooterNote, Logo } from './ui';
 
 const NAV_ITEMS = [
-  { to: '/team', label: 'Best XI' },
-  { to: '/insights', label: 'Insights' },
-  { to: '/players', label: 'Players' },
-  { to: '/profile', label: 'Profile' },
+  {
+    to: '/team',
+    label: 'Best XI',
+    icon: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M4 12h16M9 3v3h6V3M9 21v-3h6v3" /></>,
+  },
+  {
+    to: '/insights',
+    label: 'Insights',
+    icon: <path d="M4 19l5-6 4 3 7-9M15 7h5v5" />,
+  },
+  {
+    to: '/players',
+    label: 'Players',
+    icon: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 010 7M18 14.8c1.8.8 3 2.5 3.5 5.2" /></>,
+  },
+  {
+    to: '/profile',
+    label: 'Profile',
+    icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" /></>,
+  },
 ];
+
+function NavIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+function LeagueToggle() {
+  const { league, setLeague } = useLeague();
+
+  return (
+    <div role="radiogroup" aria-label="Competition" className="relative inline-flex rounded-full border border-line bg-white/[0.03] p-1">
+      {/* Sliding indicator */}
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-white/[0.09] ring-1 ring-mint/30 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{ transform: league === 'CHAMPIONS_LEAGUE' ? 'translateX(100%)' : 'none' }}
+      />
+      {LEAGUES.map((item) => {
+        const active = league === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => setLeague(item.id)}
+            className={`relative z-10 flex min-w-[4.5rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors lg:min-w-[9.5rem] ${
+              active ? 'text-ink' : 'text-muted hover:text-ink'
+            }`}
+          >
+            <span className={`num font-mono text-[11px] ${active ? 'text-mint' : 'text-faint'}`}>{item.currency}</span>
+            <span className="lg:hidden">{item.short}</span>
+            <span className="hidden lg:inline">{item.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 type AppLayoutProps = {
   children: ReactNode;
-  /** Page-wide hero band shown under the navigation. */
-  hero?: ReactNode;
-  /** Hide the league switcher on pages that do not depend on it. */
-  showLeagueSwitcher?: boolean;
+  /** Page header rendered under the navigation, full width. */
+  header?: ReactNode;
+  /** Whether the selected gameweek affects this page. */
+  gameweekApplies?: boolean;
 };
 
-export default function AppLayout({
-  children,
-  hero,
-  showLeagueSwitcher = true,
-}: AppLayoutProps) {
+export default function AppLayout({ children, header, gameweekApplies = true }: AppLayoutProps) {
   const navigate = useNavigate();
-  const client = useApolloClient();
-  const { league, setLeague } = useLeague();
 
   useEffect(() => {
     if (!sessionStorage.getItem('token')) {
@@ -36,88 +88,83 @@ export default function AppLayout({
     }
   }, [navigate]);
 
-  async function logout() {
-    sessionStorage.removeItem('token');
-    await client.clearStore();
-    navigate('/login', { replace: true });
-  }
-
   return (
-    <div className="min-h-screen bg-ink text-white">
-      {/* Utility bar */}
-      <div className="bg-black">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
-          <Link to="/team" className="flex items-center gap-2.5">
-            <img src={logo} alt="" className="h-7 w-7" />
-            <span className="font-display text-lg font-extrabold uppercase italic tracking-wide">
-              Fantasy<span className="text-accent">Predictor</span>
-            </span>
+    <div className="min-h-screen bg-bg pb-24 text-ink md:pb-0">
+      <header className="sticky top-0 z-40 border-b border-line bg-bg/75 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 sm:px-6">
+          <Link to="/team" aria-label="Fantasy Predictor home" className="shrink-0">
+            <span className="hidden sm:block"><Logo /></span>
+            <span className="sm:hidden"><Logo withWordmark={false} /></span>
           </Link>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white"
-          >
-            Log out
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 4H4v12h4M13 6l4 4-4 4M17 10H8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
 
-      {/* Main navigation band */}
-      <header className="sticky top-0 z-30 border-b border-line bg-band shadow-lg shadow-black/20">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          <nav className="-mx-1 flex gap-1 overflow-x-auto">
+          <nav className="ml-4 hidden items-center gap-1 md:flex" aria-label="Main">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `whitespace-nowrap rounded-full px-4 py-2 text-[0.95rem] font-bold transition ${
-                    isActive
-                      ? 'bg-accent text-on-accent shadow-[0_0_24px_-4px_var(--accent)]'
-                      : 'text-white/85 hover:bg-white/10 hover:text-white'
+                  `relative rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white/[0.07] text-ink' : 'text-muted hover:text-ink'
                   }`
                 }
               >
-                {item.label}
+                {({ isActive }) => (
+                  <>
+                    {item.label}
+                    {isActive && (
+                      <span className="bg-accent absolute inset-x-3.5 -bottom-[11px] h-px shadow-[0_0_10px_rgb(60_245_160/0.8)]" />
+                    )}
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
 
-          {showLeagueSwitcher && (
-            <div
-              role="group"
-              aria-label="Competition"
-              className="flex rounded-full border border-white/15 bg-black/25 p-1"
-            >
-              {LEAGUES.map((item) => {
-                const active = league === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setLeague(item.id)}
-                    aria-pressed={active}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider transition ${
-                      active ? 'bg-white text-ink' : 'text-white/70 hover:text-white'
-                    }`}
-                  >
-                    <span className="sm:hidden">{item.short}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </button>
-                );
-              })}
+          <div className="ml-auto flex items-center gap-2">
+            <LeagueToggle />
+            <div className="hidden sm:block">
+              <GameweekPicker
+                disabled={!gameweekApplies}
+                disabledReason="This page always uses the next gameweek"
+              />
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Gameweek picker gets its own row on small screens */}
+        <div className="border-t border-line px-4 py-2 sm:hidden">
+          <GameweekPicker disabled={!gameweekApplies} disabledReason="This page always uses the next gameweek" />
         </div>
       </header>
 
-      {hero}
+      {header}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+
+      <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6">
+        <FooterNote />
+      </footer>
+
+      {/* Mobile tab bar */}
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-line bg-[#111]/85 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl md:hidden"
+      >
+        {NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] font-medium transition-colors ${
+                isActive ? 'bg-white/[0.07] text-mint' : 'text-muted'
+              }`
+            }
+          >
+            <NavIcon>{item.icon}</NavIcon>
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

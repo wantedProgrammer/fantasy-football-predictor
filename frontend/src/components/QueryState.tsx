@@ -1,19 +1,7 @@
 import type { ApolloError } from '@apollo/client';
 import { Link } from 'react-router-dom';
 
-export function Loading({ label }: { label: string }) {
-  return (
-    <div className="rounded-3xl border border-line bg-surface p-12 text-center">
-      <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center">
-        <span className="absolute h-12 w-12 animate-ping rounded-full bg-accent/30" />
-        <span className="relative h-8 w-8 animate-spin rounded-full border-4 border-white/15 border-t-accent" />
-      </div>
-      <p className="font-display text-xl font-bold uppercase italic tracking-wide text-white/85">
-        {label}
-      </p>
-    </div>
-  );
-}
+import { buttonGhost } from './ui';
 
 export function ErrorPanel({
   title,
@@ -27,35 +15,30 @@ export function ErrorPanel({
   const expired = /unauthori[sz]ed/i.test(error.message);
 
   return (
-    <div className="rounded-3xl border border-[#ff1751]/40 bg-[#ff1751]/10 p-6">
-      <p className="eyebrow text-[#ff6b8f]">Something went wrong</p>
-      <h3 className="mt-1 font-display text-2xl font-extrabold uppercase italic">
-        {expired ? 'Your session has expired' : title}
-      </h3>
-      <p className="mt-2 text-sm text-white/75">
-        {expired ? 'Log in again to keep using the predictor.' : error.message}
-      </p>
-      <div className="mt-4 flex gap-3">
-        {expired ? (
-          <Link
-            to="/login"
-            onClick={() => sessionStorage.removeItem('token')}
-            className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-white/90"
-          >
-            Log in
-          </Link>
-        ) : (
-          onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-white/90"
-            >
-              Try again
-            </button>
-          )
-        )}
+    <div role="alert" className="glass flex flex-col items-start gap-4 rounded-2xl border-warn/30 p-6 sm:flex-row sm:items-center">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-warn/15 text-warn">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M12 8v5M12 16.5v.5" />
+          <path d="M10.3 3.9L2.6 17.5A2 2 0 004.3 20.5h15.4a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+        </svg>
+      </span>
+      <div className="flex-1">
+        <h3 className="font-semibold">{expired ? 'Your session has expired' : title}</h3>
+        <p className="mt-0.5 text-sm text-muted">
+          {expired ? 'Log in again to keep using the predictor.' : error.message}
+        </p>
       </div>
+      {expired ? (
+        <Link to="/login" onClick={() => sessionStorage.removeItem('token')} className={buttonGhost}>
+          Log in
+        </Link>
+      ) : (
+        onRetry && (
+          <button type="button" onClick={onRetry} className={buttonGhost}>
+            Try again
+          </button>
+        )
+      )}
     </div>
   );
 }
