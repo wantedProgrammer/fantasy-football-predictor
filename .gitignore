@@ -14,3 +14,6 @@ coverage
 # Editor / OS
 .DS_Store
 Thumbs.db
+
+# Original image sources (compressed copies live in frontend/src/assets)
+Images/
