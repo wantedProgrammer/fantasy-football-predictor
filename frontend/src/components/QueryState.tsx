@@ -1,5 +1,4 @@
 import type { ApolloError } from '@apollo/client';
-import { Link } from 'react-router-dom';
 
 import { buttonGhost } from './ui';
 
@@ -12,8 +11,6 @@ export function ErrorPanel({
   error: ApolloError;
   onRetry?: () => void;
 }) {
-  const expired = /unauthori[sz]ed/i.test(error.message);
-
   return (
     <div role="alert" className="glass flex flex-col items-start gap-4 rounded-2xl border-warn/30 p-6 sm:flex-row sm:items-center">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-warn/15 text-warn">
@@ -23,21 +20,13 @@ export function ErrorPanel({
         </svg>
       </span>
       <div className="flex-1">
-        <h3 className="font-semibold">{expired ? 'Your session has expired' : title}</h3>
-        <p className="mt-0.5 text-sm text-muted">
-          {expired ? 'Log in again to keep using the predictor.' : error.message}
-        </p>
+        <h3 className="font-semibold">{title}</h3>
+        <p className="mt-0.5 text-sm text-muted">{error.message}</p>
       </div>
-      {expired ? (
-        <Link to="/login" onClick={() => sessionStorage.removeItem('token')} className={buttonGhost}>
-          Log in
-        </Link>
-      ) : (
-        onRetry && (
-          <button type="button" onClick={onRetry} className={buttonGhost}>
-            Try again
-          </button>
-        )
+      {onRetry && (
+        <button type="button" onClick={onRetry} className={buttonGhost}>
+          Try again
+        </button>
       )}
     </div>
   );

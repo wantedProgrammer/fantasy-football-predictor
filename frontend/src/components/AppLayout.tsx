@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
 import { LEAGUES, useLeague } from '../lib/league';
 import GameweekPicker from './GameweekPicker';
@@ -21,11 +20,6 @@ const NAV_ITEMS = [
     to: '/players',
     label: 'Players',
     icon: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 010 7M18 14.8c1.8.8 3 2.5 3.5 5.2" /></>,
-  },
-  {
-    to: '/profile',
-    label: 'Profile',
-    icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" /></>,
   },
 ];
 
@@ -80,14 +74,6 @@ type AppLayoutProps = {
 };
 
 export default function AppLayout({ children, header, gameweekApplies = true }: AppLayoutProps) {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!sessionStorage.getItem('token')) {
-      navigate('/login', { replace: true });
-    }
-  }, [navigate]);
-
   return (
     <div className="min-h-screen bg-bg pb-24 text-ink md:pb-0">
       <header className="sticky top-0 z-40 border-b border-line bg-bg/75 backdrop-blur-xl">
@@ -148,7 +134,7 @@ export default function AppLayout({ children, header, gameweekApplies = true }: 
       {/* Mobile tab bar */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-line bg-[#111]/85 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl md:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-3 rounded-2xl border border-line bg-[#111]/85 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl md:hidden"
       >
         {NAV_ITEMS.map((item) => (
           <NavLink

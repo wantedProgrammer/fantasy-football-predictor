@@ -6,7 +6,6 @@ import {
   InMemoryCache,
   HttpLink,
 } from '@apollo/client';
-import { setContext } from '@apollo/client/link/context';
 import { BrowserRouter } from 'react-router-dom';
 
 import './index.css';
@@ -17,19 +16,8 @@ const httpLink = new HttpLink({
   uri: import.meta.env.VITE_API_URL ?? 'http://localhost:4000/graphql',
 });
 
-const authLink = setContext((_, { headers }) => {
-  const token = sessionStorage.getItem('token');
-
-  return {
-    headers: {
-      ...headers,
-      Authorization: token ? `Bearer ${token}` : '',
-    },
-  };
-});
-
 const client = new ApolloClient({
-  link: authLink.concat(httpLink),
+  link: httpLink,
   cache: new InMemoryCache({
     typePolicies: {
       // Player objects are snapshots tied to a league, gameweek and horizon,
