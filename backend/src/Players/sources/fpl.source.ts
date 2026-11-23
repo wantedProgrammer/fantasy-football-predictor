@@ -12,6 +12,8 @@ import { getJson, toNullableNumber, toNumber } from './http';
 
 const BOOTSTRAP_URL = 'https://fantasy.premierleague.com/api/bootstrap-static/';
 const FIXTURES_URL = 'https://fantasy.premierleague.com/api/fixtures/';
+const ELEMENT_SUMMARY_URL =
+  'https://fantasy.premierleague.com/api/element-summary/';
 
 type FplTeam = {
   id: number;
@@ -202,4 +204,23 @@ export async function fetchPremierLeagueSnapshot(): Promise<LeagueSnapshot> {
     defaultGameweek: nextGameweek?.id ?? 1,
     fetchedAt: new Date(),
   };
+}
+
+type FplHistoryRow = {
+  round: number;
+  total_points: number;
+};
+
+/** Per-fixture points history for one FPL player (finished gameweeks only). */
+export async function fetchPremierLeagueHistory(
+  playerId: string,
+): Promise<{ gameweek: number; points: number }[]> {
+  const summary = await getJson<{ history?: FplHistoryRow[] }>(
+    `${ELEMENT_SUMMARY_URL}${encodeURIComponent(playerId)}/`,
+  );
+
+  return (summary?.history ?? []).map((row) => ({
+    gameweek: toNumber(row.round),
+    points: toNumber(row.total_points),
+  }));
 }

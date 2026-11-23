@@ -58,6 +58,20 @@ enum Position {
   FWD
 }
 
+type GameweekPointsModel {
+  gameweek: Int!
+  points: Int!
+}
+
+type PlayerHistoryModel {
+  playerId: String!
+
+  """
+  Points in the most recent finished gameweeks, oldest first. Empty when the provider does not publish per-gameweek history.
+  """
+  recent: [GameweekPointsModel!]!
+}
+
 type GameweekModel {
   id: Int!
   name: String!
@@ -172,6 +186,9 @@ type Query {
   health: String!
   me: UserModel!
   players(league: League!): [PlayerModel!]!
+
+  """Recent per-gameweek points for one player (form sparkline)."""
+  playerHistory(league: League!, playerId: String!): PlayerHistoryModel!
 
   """Gameweeks, budget and squad rules for a competition."""
   season(league: League!): SeasonModel!

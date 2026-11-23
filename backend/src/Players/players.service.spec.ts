@@ -7,6 +7,8 @@ import { makePlayer, makeSnapshot } from '../Predictor/test-fixtures';
 
 class StubPlayersService extends PlayersService {
   public calls = 0;
+  public historyCalls = 0;
+  public history: { gameweek: number; points: number }[] = [];
 
   constructor(private readonly result: () => Promise<LeagueSnapshot>) {
     super();
@@ -16,6 +18,11 @@ class StubPlayersService extends PlayersService {
     this.calls += 1;
     return this.result();
   }
+
+  protected fetchRawHistory(): Promise<{ gameweek: number; points: number }[]> {
+    this.historyCalls += 1;
+    return Promise.resolve(this.history);
+  }
 }
 
 describe('PlayersService', () => {
@@ -23,7 +30,9 @@ describe('PlayersService', () => {
     const service = new StubPlayersService(() =>
       Promise.resolve(
         makeSnapshot({
-          players: [makePlayer({ displayName: 'Saka', teamId: 't1', price: 10 })],
+          players: [
+            makePlayer({ displayName: 'Saka', teamId: 't1', price: 10 }),
+          ],
         }),
       ),
     );
@@ -40,7 +49,9 @@ describe('PlayersService', () => {
   });
 
   it('caches snapshots between requests', async () => {
-    const service = new StubPlayersService(() => Promise.resolve(makeSnapshot()));
+    const service = new StubPlayersService(() =>
+      Promise.resolve(makeSnapshot()),
+    );
 
     await service.getSnapshot(League.PREMIER_LEAGUE);
     await service.getSnapshot(League.PREMIER_LEAGUE);
@@ -54,10 +65,75 @@ describe('PlayersService', () => {
     );
 
     await expect(service.getSnapshot(League.CHAMPIONS_LEAGUE)).rejects.toThrow(
-      new InternalServerErrorException('Unable to fetch Champions League players'),
+      new InternalServerErrorException(
+        'Unable to fetch Champions League players',
+      ),
     );
-    await expect(service.getSnapshot(League.CHAMPIONS_LEAGUE)).rejects.toThrow();
+    await expect(
+      service.getSnapshot(League.CHAMPIONS_LEAGUE),
+    ).rejects.toThrow();
 
     expect(service.calls).toBe(2);
+  });
+
+  describe('getHistory', () => {
+    it('returns the last six gameweeks, oldest first, merging double gameweeks', async () => {
+      const service = new StubPlayersService(() =>
+        Promise.resolve(makeSnapshot()),
+      );
+      service.history = [
+        { gameweek: 1, points: 2 },
+        { gameweek: 2, points: 6 },
+        { gameweek: 3, points: 1 },
+        { gameweek: 4, points: 9 },
+        { gameweek: 5, points: 3 },
+        { gameweek: 6, points: 2 },
+        { gameweek: 6, points: 5 },
+        { gameweek: 7, points: 12 },
+      ];
+
+      const result = await service.getHistory(League.PREMIER_LEAGUE, '42');
+
+      expect(result.playerId).toBe('42');
+      expect(result.recent).toEqual([
+        { gameweek: 2, points: 6 },
+        { gameweek: 3, points: 1 },
+        { gameweek: 4, points: 9 },
+        { gameweek: 5, points: 3 },
+        { gameweek: 6, points: 7 },
+        { gameweek: 7, points: 12 },
+      ]);
+    });
+
+    it('caches history per player', async () => {
+      const service = new StubPlayersService(() =>
+        Promise.resolve(makeSnapshot()),
+      );
+
+      await service.getHistory(League.PREMIER_LEAGUE, '42');
+      await service.getHistory(League.PREMIER_LEAGUE, '42');
+
+      expect(service.historyCalls).toBe(1);
+    });
+
+    it('returns no history for leagues without a history feed or for invalid ids', async () => {
+      const service = new StubPlayersService(() =>
+        Promise.resolve(makeSnapshot()),
+      );
+
+      await expect(
+        service.getHistory(League.CHAMPIONS_LEAGUE, '42'),
+      ).resolves.toEqual({
+        playerId: '42',
+        recent: [],
+      });
+      await expect(
+        service.getHistory(League.PREMIER_LEAGUE, '../bootstrap'),
+      ).resolves.toEqual({
+        playerId: '../bootstrap',
+        recent: [],
+      });
+      expect(service.historyCalls).toBe(0);
+    });
   });
 });
