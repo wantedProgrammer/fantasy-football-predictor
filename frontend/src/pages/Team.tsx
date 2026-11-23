@@ -2,232 +2,213 @@ import { useState } from 'react';
 import { useQuery } from '@apollo/client';
 
 import AppLayout from '../components/AppLayout';
-import { Shirt } from '../components/Decor';
-import GameweekPicker from '../components/GameweekPicker';
-import PageHero from '../components/PageHero';
-import { ErrorPanel, Loading } from '../components/QueryState';
+import PageHeader from '../components/PageHeader';
+import PlayerPanel from '../components/PlayerPanel';
+import SlideOver from '../components/SlideOver';
+import { CountUp, TiltCard } from '../components/motion';
+import { ErrorPanel } from '../components/QueryState';
+import { EmptyState, Segmented, Skeleton, TeamChip } from '../components/ui';
 import { GET_PREDICTED_TEAM } from '../graphql/predictor';
 import type { PredictedTeam, ProjectedPlayer } from '../graphql/predictor';
 import { LEAGUES, useLeague } from '../lib/league';
-import type { League } from '../lib/league';
-import {
-  DIFFICULTY_STYLES,
-  POSITION_LABELS,
-  fixtureLabel,
-  formatPoints,
-  formatPrice,
-  plural,
-} from '../lib/format';
+import { formatPoints, formatPrice } from '../lib/format';
 import type { Position } from '../lib/format';
 
 const HORIZONS = [
-  { value: 1, label: '1 GW', title: 'This gameweek only', hint: 'Best one-week team, like a Free Hit' },
-  { value: 3, label: '3 GWs', title: 'Next 3 gameweeks', hint: 'Balances this week against the next two' },
-  { value: 5, label: '5 GWs', title: 'Next 5 gameweeks', hint: 'Long-term squad, like a Wildcard' },
+  { value: 1, label: '1 GW', hint: 'Free Hit: best team for this gameweek only' },
+  { value: 3, label: '3 GW', hint: 'Balances this gameweek against the next two' },
+  { value: 5, label: '5 GW', hint: 'Wildcard: long-term squad over five gameweeks' },
 ];
+
+const HORIZON_NOTES: Record<number, string> = {
+  1: 'Free Hit',
+  3: 'Medium term',
+  5: 'Wildcard',
+};
 
 const ROWS: Position[] = ['GK', 'DEF', 'MID', 'FWD'];
 
-function Armband({ captain }: { captain: boolean }) {
+function RoleBadge({ item }: { item: ProjectedPlayer }) {
+  if (!item.isCaptain && !item.isViceCaptain) return null;
+
   return (
     <span
-      className={`absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full font-display text-xs font-black ring-2 ring-black/40 ${
-        captain ? 'bg-amber-300 text-black' : 'bg-white text-black'
+      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+        item.isCaptain
+          ? 'bg-accent text-[#04130c] shadow-[0_0_12px_rgb(60_245_160/0.7)]'
+          : 'border border-white/30 bg-black/40 text-ink'
       }`}
-      title={captain ? 'Captain' : 'Vice-captain'}
+      title={item.isCaptain ? 'Captain' : 'Vice-captain'}
+      aria-label={item.isCaptain ? 'Captain' : 'Vice-captain'}
     >
-      {captain ? 'C' : 'V'}
+      {item.isCaptain ? 'C' : 'V'}
     </span>
   );
 }
 
-function PitchPlayer({
+function PlayerCard({
   item,
   currency,
-  selected,
+  order,
   onSelect,
+  compact = false,
+  label,
 }: {
   item: ProjectedPlayer;
   currency: string;
-  selected: boolean;
+  /** Position in the drop-in sequence. */
+  order: number;
   onSelect: () => void;
+  compact?: boolean;
+  label?: string;
 }) {
   const { player } = item;
   const doubtful = player.availability < 1;
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`group relative flex w-[4.6rem] flex-col items-center text-center transition sm:w-[6.5rem] ${
-        selected ? 'scale-105' : 'hover:-translate-y-0.5'
-      }`}
-    >
-      <span className="relative">
-        {(item.isCaptain || item.isViceCaptain) && <Armband captain={item.isCaptain} />}
-        {doubtful && (
-          <span
-            className="absolute -left-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[11px] font-black text-black ring-2 ring-black/40"
-            title={`${Math.round(player.availability * 100)}% chance of playing`}
-          >
-            !
-          </span>
-        )}
-        <Shirt teamShort={player.teamShort} goalkeeper={player.position === 'GK'} size={52} />
-      </span>
-
-      <span
-        className={`mt-0.5 w-full overflow-hidden rounded-md shadow-lg shadow-black/30 ${
-          selected ? 'ring-2 ring-accent' : ''
-        }`}
+    <div className="animate-drop" style={{ animationDelay: `${150 + order * 70}ms` }}>
+      <TiltCard
+        as="button"
+        onClick={onSelect}
+        aria-label={`${player.displayName}, ${formatPoints(item.predictedPoints)} projected points. Show why this pick.`}
+        maxTilt={10}
+        className={`glass flex flex-col rounded-xl text-left ${
+          compact ? 'w-full p-2.5' : 'w-[4.85rem] p-2 sm:w-[7.25rem] sm:p-2.5'
+        } ${doubtful ? '!border-warn/40' : ''}`}
       >
-        <span className="block truncate bg-white px-1 py-0.5 text-[11px] font-extrabold text-ink sm:text-xs">
+        <span className="flex items-center justify-between gap-1">
+          <TeamChip code={player.teamShort} size="xs" />
+          <RoleBadge item={item} />
+        </span>
+        {label && <span className="mt-1.5 font-mono text-[10px] text-faint">{label}</span>}
+        <span className="mt-1.5 truncate text-[12px] font-semibold leading-tight sm:text-[13px]">
           {player.displayName}
         </span>
-        <span className="flex items-center justify-between gap-1 bg-ink px-1.5 py-0.5 text-[10px] font-semibold text-white/75 sm:text-[11px]">
-          <span className="hidden truncate sm:inline">
-            {item.fixtures.length > 0 ? item.fixtures.map(fixtureLabel).join(', ') : 'No fixture'}
+        <span className="mt-1 flex items-end justify-between gap-1">
+          <span className="num font-mono text-[10px] text-muted sm:text-[11px]">
+            {formatPrice(currency, player.price)}
           </span>
-          <span className="stat ml-auto text-sm text-accent sm:text-base">
+          <span className="num text-accent text-sm font-semibold sm:text-base">
             {formatPoints(item.predictedPoints)}
           </span>
         </span>
-      </span>
-      <span className="mt-0.5 hidden text-[10px] font-bold text-white/80 sm:block">
-        {formatPrice(currency, player.price)}
-      </span>
-    </button>
-  );
-}
-
-function AdBoard({ text }: { text: string }) {
-  const items = Array.from({ length: 8 }, (_, index) => index);
-
-  return (
-    <div className="relative mx-auto h-9 overflow-hidden rounded-t-xl border-b border-black/40 bg-black sm:h-10" aria-hidden="true">
-      <div className="board-track flex h-full w-max items-center">
-        {[...items, ...items].map((index) => (
-          <span
-            key={index}
-            className="flex items-center gap-4 px-6 font-display text-lg font-black uppercase italic tracking-wider sm:text-xl"
-          >
-            <span className="text-sweep">Fantasy Predictor</span>
-            <span className="text-white/50">{text}</span>
+        {doubtful && (
+          <span className="mt-1 truncate text-[10px] font-medium text-warn">
+            {Math.round(player.availability * 100)}% to play
           </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PlayerDetails({
-  item,
-  currency,
-  horizon,
-}: {
-  item: ProjectedPlayer;
-  currency: string;
-  horizon: number;
-}) {
-  const { player } = item;
-
-  return (
-    <div className="overflow-hidden rounded-3xl border border-line bg-surface">
-      <div className="relative flex items-center gap-4 bg-sweep p-5">
-        <div className="absolute inset-0 bg-ink/45" />
-        <span className="relative">
-          <Shirt teamShort={player.teamShort} goalkeeper={player.position === 'GK'} size={68} />
-        </span>
-        <div className="relative min-w-0">
-          <p className="eyebrow truncate text-white/80">
-            {player.team} · {POSITION_LABELS[player.position]}
-          </p>
-          <h3 className="headline mt-1 truncate text-4xl">{player.displayName}</h3>
-          {(item.isCaptain || item.isViceCaptain) && (
-            <span
-              className={`mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider ${
-                item.isCaptain ? 'bg-amber-300 text-black' : 'bg-white text-black'
-              }`}
-            >
-              {item.isCaptain ? 'Captain' : 'Vice-captain'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="p-5">
-        <dl className="grid grid-cols-3 divide-x divide-line rounded-2xl bg-raised py-3 text-center">
-          <div>
-            <dt className="eyebrow text-white/55">{horizon > 1 ? `${horizon} GW proj.` : 'Proj.'}</dt>
-            <dd className="stat mt-1 text-3xl text-accent">{formatPoints(item.predictedPoints)}</dd>
-          </div>
-          <div>
-            <dt className="eyebrow text-white/55">Price</dt>
-            <dd className="stat mt-1 text-3xl">{formatPrice(currency, player.price)}</dd>
-          </div>
-          <div>
-            <dt className="eyebrow text-white/55">Owned</dt>
-            <dd className="stat mt-1 text-3xl">{player.selectedBy.toFixed(1)}%</dd>
-          </div>
-        </dl>
-
-        {item.fixtures.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {item.fixtures.map((fixture) => (
-              <span
-                key={`${fixture.gameweek}-${fixture.opponent}-${fixture.home}`}
-                className={`rounded-md px-2 py-1 text-xs font-extrabold ${DIFFICULTY_STYLES[fixture.difficulty]}`}
-                title={`Difficulty ${fixture.difficulty}/5`}
-              >
-                GW{fixture.gameweek} · {fixtureLabel(fixture)}
-              </span>
-            ))}
-          </div>
         )}
+      </TiltCard>
+    </div>
+  );
+}
 
-        <h4 className="eyebrow mt-5 text-accent">Why this pick</h4>
-        <ul className="mt-2 space-y-2 text-sm text-white/80">
-          {[
-            ...item.reasons,
-            `Season: ${player.totalPoints} pts, ${plural(player.goals, 'goal')}, ${plural(player.assists, 'assist')}`,
-          ].map((reason) => (
-            <li key={reason} className="flex gap-2.5">
-              <span className="mt-1.5 h-1.5 w-3 shrink-0 -skew-x-12 bg-accent" />
-              <span>{reason}</span>
-            </li>
-          ))}
-        </ul>
+function Pitch({
+  team,
+  onSelect,
+}: {
+  team: PredictedTeam;
+  onSelect: (id: string) => void;
+}) {
+  let order = 0;
+
+  return (
+    <div
+      className="relative flex flex-col overflow-hidden rounded-3xl border border-line bg-pitch"
+      aria-label={`Starting XI in a ${team.formation} formation`}
+      role="group"
+    >
+      {/* Mown stripes and pitch markings, top-down */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(180deg, rgb(255 255 255 / 0.018) 0 56px, transparent 56px 112px), radial-gradient(ellipse at 50% 40%, rgb(60 245 160 / 0.10), transparent 65%)',
+        }}
+      />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-3 rounded-2xl border border-white/[0.09]">
+        <div className="absolute left-1/2 top-0 h-[17%] w-[44%] -translate-x-1/2 border border-t-0 border-white/[0.09]" />
+        <div className="absolute left-1/2 top-0 h-[7%] w-[20%] -translate-x-1/2 border border-t-0 border-white/[0.09]" />
+        <div className="absolute left-1/2 top-[17%] h-10 w-20 -translate-x-1/2 rounded-b-full border border-t-0 border-white/[0.09]" />
+        <div className="absolute inset-x-0 bottom-0 border-t border-white/[0.09]" />
+        <div className="absolute bottom-0 left-1/2 h-28 w-28 -translate-x-1/2 translate-y-1/2 rounded-full border border-white/[0.09]" />
+      </div>
+
+      <div className="relative flex min-h-[30rem] flex-1 flex-col justify-around gap-4 px-1.5 py-7 sm:min-h-[38rem] sm:px-6">
+        {ROWS.map((position) => (
+          <div key={position} className="flex justify-center gap-1.5 sm:gap-4">
+            {team.starters
+              .filter((item) => item.player.position === position)
+              .map((item) => (
+                <PlayerCard
+                  key={item.player.id}
+                  item={item}
+                  currency={team.currency}
+                  order={order++}
+                  onSelect={() => onSelect(item.player.id)}
+                />
+              ))}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function SquadBar({ team }: { team: PredictedTeam }) {
-  const stats = [
-    { label: 'Players', value: `${team.starters.length + team.bench.length}`, suffix: '/15' },
-    { label: 'Formation', value: team.formation },
-    { label: 'Squad cost', value: formatPrice(team.currency, team.totalCost) },
-    { label: 'In the bank', value: formatPrice(team.currency, team.bank) },
-  ];
+function Summary({ team }: { team: PredictedTeam }) {
+  const money = (value: number) => formatPrice(team.currency, value);
 
   return (
-    <div className="relative isolate mb-6 overflow-hidden rounded-2xl border border-white/15 bg-surface shadow-xl shadow-black/30">
-      <div className="absolute inset-0 -z-10 bg-sweep opacity-25" />
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 px-5 py-3.5">
-        {stats.map((stat) => (
-          <div key={stat.label}>
-            <p className="text-xs font-semibold text-white/65">{stat.label}</p>
-            <p className="stat text-2xl sm:text-3xl">
-              {stat.value}
-              {stat.suffix && <span className="text-base text-white/60">{stat.suffix}</span>}
-            </p>
-          </div>
-        ))}
-        <div className="ml-auto rounded-xl bg-accent px-5 py-2 text-on-accent">
-          <p className="text-[11px] font-extrabold uppercase tracking-wider opacity-75">
-            {team.horizon > 1 ? `Projected · ${team.horizon} GWs` : 'Projected points'}
-          </p>
-          <p className="stat text-3xl">{formatPoints(team.predictedPoints)}</p>
+    <div className="glass grid gap-6 rounded-2xl p-5 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-10 sm:p-6">
+      <div>
+        <p className="text-xs text-muted">
+          {team.horizon > 1 ? `Projected points · next ${team.horizon} GWs` : 'Projected points'}
+        </p>
+        <CountUp
+          value={team.predictedPoints}
+          className="text-accent block text-6xl font-semibold leading-none tracking-[-0.04em] sm:text-7xl"
+        />
+      </div>
+      <dl className="grid grid-cols-3 gap-3 sm:border-l sm:border-line sm:pl-10">
+        <div>
+          <dt className="text-xs text-muted">Formation</dt>
+          <dd className="num mt-1 text-xl font-semibold sm:text-2xl">{team.formation}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted">Squad cost</dt>
+          <dd className="mt-1 text-xl font-semibold sm:text-2xl">
+            <CountUp value={team.totalCost} format={money} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted">In the bank</dt>
+          <dd className="mt-1 text-xl font-semibold text-mint sm:text-2xl">
+            <CountUp value={team.bank} format={money} />
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function TeamSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Building your team">
+      <Skeleton className="h-32 w-full rounded-2xl" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="rounded-3xl border border-line bg-pitch p-6">
+          {[1, 4, 4, 2].map((count, row) => (
+            <div key={row} className="my-10 flex justify-center gap-3">
+              {Array.from({ length: count }, (_, index) => (
+                <Skeleton key={index} className="h-[5.5rem] w-[4.85rem] rounded-xl sm:w-[7.25rem]" />
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-20 w-full rounded-xl" />
+          ))}
         </div>
       </div>
     </div>
@@ -235,120 +216,75 @@ function SquadBar({ team }: { team: PredictedTeam }) {
 }
 
 function TeamView({ team }: { team: PredictedTeam }) {
-  const captain = team.starters.find((item) => item.isCaptain) ?? team.starters[0];
+  const { league } = useLeague();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const all = [...team.starters, ...team.bench];
-  const selected = all.find((item) => item.player.id === selectedId) ?? captain;
+  const selected = all.find((item) => item.player.id === selectedId) ?? null;
+  const captain = team.starters.find((item) => item.isCaptain);
 
   return (
     <>
-      <SquadBar team={team} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0">
-          <div
-            className="overflow-hidden rounded-3xl border border-line bg-surface p-2 shadow-2xl shadow-black/40 sm:p-3"
-            aria-label={`Starting XI in a ${team.formation} formation`}
-          >
-            <AdBoard text={team.gameweekName} />
-            <div className="relative overflow-hidden rounded-b-2xl">
-              {/* Grass, cut slightly narrower at the far end for depth */}
-              <div
-                className="pitch absolute inset-0"
-                style={{ clipPath: 'polygon(4% 0, 96% 0, 100% 100%, 0 100%)' }}
-              />
-              {/* Pitch markings */}
-              <div className="pointer-events-none absolute inset-x-[6%] top-0 h-[16%] rounded-b-md border-2 border-t-0 border-white/35" />
-              <div className="pointer-events-none absolute left-1/2 top-0 h-[7%] w-[22%] -translate-x-1/2 border-2 border-t-0 border-white/35" />
-              <div className="pointer-events-none absolute bottom-0 left-1/2 h-24 w-48 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-white/35" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t-2 border-white/35" />
+      <Summary team={team} />
 
-              <div className="relative flex min-h-[30rem] flex-col justify-around gap-3 px-1 py-6 sm:min-h-[36rem] sm:px-4">
-                {ROWS.map((position) => (
-                  <div key={position} className="flex flex-wrap justify-center gap-1 sm:gap-5">
-                    {team.starters
-                      .filter((item) => item.player.position === position)
-                      .map((item) => (
-                        <PitchPlayer
-                          key={item.player.id}
-                          item={item}
-                          currency={team.currency}
-                          selected={selected?.player.id === item.player.id}
-                          onSelect={() => setSelectedId(item.player.id)}
-                        />
-                      ))}
-                  </div>
-                ))}
-              </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Pitch team={team} onSelect={setSelectedId} />
+
+        <aside className="space-y-6">
+          <section>
+            <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Bench · in order</h2>
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-1">
+              {team.bench.map((item, index) => (
+                <PlayerCard
+                  key={item.player.id}
+                  item={item}
+                  currency={team.currency}
+                  order={team.starters.length + index}
+                  onSelect={() => setSelectedId(item.player.id)}
+                  compact
+                  label={index === 0 ? 'GK' : `SUB ${index}`}
+                />
+              ))}
             </div>
+          </section>
 
-            {/* Dugout */}
-            <div className="mt-2 rounded-2xl bg-raised p-3">
-              <p className="eyebrow mb-2 px-1 text-white/55">Substitutes</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {team.bench.map((item, index) => {
-                  const active = selected?.player.id === item.player.id;
-                  return (
-                    <button
-                      key={item.player.id}
-                      type="button"
-                      onClick={() => setSelectedId(item.player.id)}
-                      className={`flex items-center gap-2 rounded-xl p-2 text-left transition ${
-                        active ? 'bg-white/15 ring-2 ring-accent' : 'bg-black/20 hover:bg-white/10'
-                      }`}
-                    >
-                      <Shirt
-                        teamShort={item.player.teamShort}
-                        goalkeeper={item.player.position === 'GK'}
-                        size={36}
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-[10px] font-extrabold uppercase tracking-wider text-white/50">
-                          {index === 0 ? 'GK' : `Sub ${index}`} · {item.player.position}
-                        </span>
-                        <span className="block truncate text-sm font-bold">{item.player.displayName}</span>
-                        <span className="block text-xs text-white/60">
-                          <span className="font-bold text-accent">{formatPoints(item.predictedPoints)}</span> pts ·{' '}
-                          {formatPrice(team.currency, item.player.price)}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+          {captain && (
+            <button
+              type="button"
+              onClick={() => setSelectedId(captain.player.id)}
+              className="glass w-full rounded-2xl p-4 text-left transition hover:border-mint/30"
+            >
+              <p className="text-xs text-muted">Captain · points count twice</p>
+              <p className="mt-1 flex items-center gap-2 text-lg font-semibold">
+                {captain.player.displayName}
+                <TeamChip code={captain.player.teamShort} size="xs" />
+              </p>
+              <p className="num text-accent mt-1 text-2xl font-semibold">
+                {formatPoints(captain.predictedPoints * 2)}
+                <span className="ml-1 text-sm text-muted">pts with armband</span>
+              </p>
+            </button>
+          )}
 
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          {selected && <PlayerDetails item={selected} currency={team.currency} horizon={team.horizon} />}
-
-          <details className="group rounded-3xl border border-line bg-surface p-5 text-sm text-white/70">
-            <summary className="flex cursor-pointer list-none items-center justify-between font-bold text-white">
-              How this team is built
-              <span className="text-accent transition group-open:rotate-45">+</span>
-            </summary>
-            <p className="mt-3">
-              Each player gets an expected-points projection from their underlying stats, recent form,
-              fixture difficulty and the chance they play. The optimiser then searches for the 15-man
-              squad with the highest-scoring XI within the {team.currency}
-              {team.budget}m budget, a maximum of 3 players per club and legal formations. The
-              captain's points count twice.
-            </p>
-          </details>
+          <p className="text-xs leading-relaxed text-faint">
+            Built from expected-points projections (underlying stats, form, fixture difficulty and the chance
+            each player starts), within a {team.currency}
+            {team.budget}m budget, max 3 players per club and legal formations.
+          </p>
         </aside>
       </div>
+
+      <SlideOver open={selected !== null} onClose={() => setSelectedId(null)} title="Why this pick?">
+        {selected && (
+          <PlayerPanel item={selected} league={league} currency={team.currency} horizon={team.horizon} />
+        )}
+      </SlideOver>
     </>
   );
 }
 
 export default function Team() {
-  const { league } = useLeague();
-  const [gameweeks, setGameweeks] = useState<Record<League, number | null>>({
-    PREMIER_LEAGUE: null,
-    CHAMPIONS_LEAGUE: null,
-  });
+  const { league, gameweek } = useLeague();
   const [horizon, setHorizon] = useState(1);
-  const gameweek = gameweeks[league];
 
   const { data, loading, error, refetch } = useQuery<{ predictedTeam: PredictedTeam }>(
     GET_PREDICTED_TEAM,
@@ -357,65 +293,36 @@ export default function Team() {
 
   const team = data?.predictedTeam;
   const leagueLabel = LEAGUES.find((item) => item.id === league)?.label;
-  const horizonInfo = HORIZONS.find((option) => option.value === horizon);
 
   return (
     <AppLayout
-      hero={
-        <PageHero
+      header={
+        <PageHeader
+          key={league}
           eyebrow={`${leagueLabel} · ${team?.gameweekName ?? 'Upcoming gameweek'}`}
-          title={
-            <>
-              Best <span className="text-accent">XI</span>
-            </>
-          }
-          description="The highest-projected legal squad for the gameweek, picked from live fantasy data."
-          actions={
-            <div className="grid gap-3 sm:grid-cols-2 lg:w-[30rem]">
-              <GameweekPicker
-                league={league}
-                value={gameweek}
-                onChange={(value) => setGameweeks((current) => ({ ...current, [league]: value }))}
-              />
-              <div>
-                <span className="eyebrow mb-2 block text-white/75">Plan for</span>
-                <div
-                  role="radiogroup"
-                  aria-label="Plan for"
-                  className="grid grid-cols-3 rounded-xl border border-line bg-raised p-1"
-                >
-                  {HORIZONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={horizon === option.value}
-                      title={option.title}
-                      onClick={() => setHorizon(option.value)}
-                      className={`rounded-lg py-2 text-sm font-extrabold transition ${
-                        horizon === option.value
-                          ? 'bg-accent text-on-accent'
-                          : 'text-white/70 hover:text-white'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <span className="mt-1.5 block text-xs font-semibold text-white/70">
-                  {horizonInfo?.hint}
-                </span>
-              </div>
+          title="Your best XI"
+          accentWords={['XI']}
+          description="The highest-projected legal squad for the gameweek, built from live fantasy data."
+          aside={
+            <div className="flex flex-col gap-2 lg:items-end">
+              <span className="text-xs text-muted">Plan for · {HORIZON_NOTES[horizon]}</span>
+              <Segmented label="Plan for" options={HORIZONS} value={horizon} onChange={setHorizon} />
             </div>
           }
         />
       }
     >
-      {loading && <Loading label="Running the optimiser..." />}
+      {loading && <TeamSkeleton />}
       {error && !loading && (
         <ErrorPanel title="Unable to build a team" error={error} onRetry={() => refetch()} />
       )}
-      {team && !loading && (
+      {!loading && !error && team && team.starters.length === 0 && (
+        <EmptyState
+          title="No team for this gameweek yet"
+          body="Fixtures or player data for this gameweek haven't been published. Try another gameweek."
+        />
+      )}
+      {team && !loading && team.starters.length > 0 && (
         <TeamView key={`${team.league}-${team.gameweek}-${team.horizon}`} team={team} />
       )}
     </AppLayout>
