@@ -57,6 +57,10 @@ export type ProjectedPlayer = {
   isCaptain: boolean;
   isViceCaptain: boolean;
   reasons: string[];
+  /** Expected goals + assists per 90, when the provider reports xG/xA. */
+  xgiPer90: number | null;
+  /** Chance (0-1) of a clean sheet in the first fixture. */
+  cleanSheetChance: number | null;
   fixtures: Fixture[];
   player: PlayerSummary;
 };
@@ -121,6 +125,8 @@ const PROJECTED_PLAYER_FIELDS = `
   isCaptain
   isViceCaptain
   reasons
+  xgiPer90
+  cleanSheetChance
   fixtures { ${FIXTURE_FIELDS} }
   player {
     id

@@ -22,3 +22,17 @@ export const GET_PLAYERS = gql`
     }
   }
 `;
+
+export type GameweekPoints = { gameweek: number; points: number };
+
+export const GET_PLAYER_HISTORY = gql`
+  query PlayerHistory($league: League!, $playerId: String!) {
+    playerHistory(league: $league, playerId: $playerId) {
+      playerId
+      recent {
+        gameweek
+        points
+      }
+    }
+  }
+`;
