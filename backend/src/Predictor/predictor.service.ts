@@ -199,6 +199,8 @@ export class PredictorService {
       playProbability: projection.playProbability,
       fixtures: projection.fixtures.map(toFixtureModel),
       reasons: projection.reasons,
+      xgiPer90: projection.xgiPer90,
+      cleanSheetChance: projection.cleanSheetChance,
       ...flags,
     };
   }

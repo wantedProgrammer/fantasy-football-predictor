@@ -102,6 +102,14 @@ type ProjectedPlayerModel {
   playProbability: Float!
   fixtures: [FixtureModel!]!
   reasons: [String!]!
+
+  """
+  Expected goals + assists per 90 minutes, when the provider reports xG/xA.
+  """
+  xgiPer90: Float
+
+  """Chance (0-1) of a clean sheet in the first fixture of the gameweek."""
+  cleanSheetChance: Float
   isCaptain: Boolean!
   isViceCaptain: Boolean!
 }

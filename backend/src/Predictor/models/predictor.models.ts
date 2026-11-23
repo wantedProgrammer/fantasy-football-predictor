@@ -83,6 +83,20 @@ export class ProjectedPlayerModel {
   @Field(() => [String])
   reasons!: string[];
 
+  @Field(() => Float, {
+    nullable: true,
+    description:
+      'Expected goals + assists per 90 minutes, when the provider reports xG/xA.',
+  })
+  xgiPer90!: number | null;
+
+  @Field(() => Float, {
+    nullable: true,
+    description:
+      'Chance (0-1) of a clean sheet in the first fixture of the gameweek.',
+  })
+  cleanSheetChance!: number | null;
+
   @Field()
   isCaptain!: boolean;
 
@@ -101,7 +115,9 @@ export class PredictedTeamModel {
   @Field()
   gameweekName!: string;
 
-  @Field(() => Int, { description: 'Number of gameweeks the squad was optimised over.' })
+  @Field(() => Int, {
+    description: 'Number of gameweeks the squad was optimised over.',
+  })
   horizon!: number;
 
   @Field()
@@ -119,7 +135,9 @@ export class PredictedTeamModel {
   @Field(() => Float)
   bank!: number;
 
-  @Field(() => Float, { description: 'Starting XI projection, captain counted twice.' })
+  @Field(() => Float, {
+    description: 'Starting XI projection, captain counted twice.',
+  })
   predictedPoints!: number;
 
   @Field(() => [ProjectedPlayerModel])
@@ -140,10 +158,14 @@ export class TeamRunModel {
   @Field(() => Float)
   averageDifficulty!: number;
 
-  @Field(() => Float, { description: 'Goals scored relative to league average.' })
+  @Field(() => Float, {
+    description: 'Goals scored relative to league average.',
+  })
   attackRating!: number;
 
-  @Field(() => Float, { description: 'Goals conceded relative to league average.' })
+  @Field(() => Float, {
+    description: 'Goals conceded relative to league average.',
+  })
   defenceRating!: number;
 
   @Field(() => [FixtureModel])

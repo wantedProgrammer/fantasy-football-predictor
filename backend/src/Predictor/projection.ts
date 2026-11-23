@@ -1,10 +1,6 @@
 import { League } from '../Players/models/league.enum';
 import { Position } from '../Players/models/position.enum';
-import {
-  FixtureInfo,
-  LeagueSnapshot,
-  PlayerRecord,
-} from '../Players/domain';
+import { FixtureInfo, LeagueSnapshot, PlayerRecord } from '../Players/domain';
 
 /**
  * Expected-points model.
@@ -42,6 +38,10 @@ export type PlayerProjection = {
   fixtures: FixtureView[];
   playProbability: number;
   reasons: string[];
+  /** Expected goals + assists per 90, when the provider reports xG/xA. */
+  xgiPer90: number | null;
+  /** Chance (0-1) of a clean sheet in the first fixture of the target gameweek. */
+  cleanSheetChance: number | null;
 };
 
 type TeamRating = {
@@ -177,9 +177,7 @@ export function buildModelContext(snapshot: LeagueSnapshot): ModelContext {
     const opponent = ratings.get(opponentId);
     const difficulty =
       officialDifficulty ??
-      strengthToDifficulty(
-        opponent ? opponent.attack / opponent.defence : 1,
-      );
+      strengthToDifficulty(opponent ? opponent.attack / opponent.defence : 1);
 
     const view: FixtureView = {
       fixture,
@@ -319,7 +317,8 @@ function perStartPoints(
     position === Position.GK && nineties > 0 ? player.saves / nineties / 3 : 0;
   const bonusPoints = player.bonus / games;
 
-  const eventModel = 2 + attackPoints + defencePoints + savePoints + bonusPoints;
+  const eventModel =
+    2 + attackPoints + defencePoints + savePoints + bonusPoints;
 
   const baseline =
     player.form > 0
@@ -341,7 +340,8 @@ function perStartPoints(
 
   // Players with very little playing time have unreliable averages.
   const sampleWeight = clamp(nineties / 4, 0.25, 1);
-  const blendedTrack = trackRecord * sampleWeight + eventModel * (1 - sampleWeight);
+  const blendedTrack =
+    trackRecord * sampleWeight + eventModel * (1 - sampleWeight);
 
   return Math.max(
     0,
@@ -377,6 +377,36 @@ function expectedForGameweek(
   return { points, fixtures, playProbability };
 }
 
+function cleanSheetChanceFor(
+  context: ModelContext,
+  player: PlayerRecord,
+  fixtures: FixtureView[],
+): number | null {
+  if (fixtures.length === 0) {
+    return null;
+  }
+
+  const own = teamRating(context, player.teamId);
+  const opponent = teamRating(context, fixtures[0].opponentId);
+  const homeDefence = fixtures[0].home
+    ? AWAY_ATTACK_PENALTY
+    : HOME_ATTACK_BOOST;
+
+  return Math.exp(
+    -context.averageGoals * opponent.attack * own.defence * homeDefence,
+  );
+}
+
+function xgiPer90For(player: PlayerRecord): number | null {
+  if (
+    player.expectedGoalsPer90 === null ||
+    player.expectedAssistsPer90 === null
+  ) {
+    return null;
+  }
+  return player.expectedGoalsPer90 + player.expectedAssistsPer90;
+}
+
 function buildReasons(
   context: ModelContext,
   player: PlayerRecord,
@@ -398,11 +428,13 @@ function buildReasons(
   }
 
   if (player.form > 0) {
-    reasons.push(`Form ${player.form.toFixed(1)}, ${player.pointsPerGame.toFixed(1)} pts per game`);
+    reasons.push(
+      `Form ${player.form.toFixed(1)}, ${player.pointsPerGame.toFixed(1)} pts per game`,
+    );
   }
 
-  if (player.expectedGoalsPer90 !== null && player.expectedAssistsPer90 !== null) {
-    const xgi = player.expectedGoalsPer90 + player.expectedAssistsPer90;
+  const xgi = xgiPer90For(player);
+  if (xgi !== null) {
     if (xgi >= 0.3) {
       reasons.push(`xGI ${xgi.toFixed(2)} per 90`);
     }
@@ -416,12 +448,7 @@ function buildReasons(
     (player.position === Position.GK || player.position === Position.DEF) &&
     fixtures.length > 0
   ) {
-    const own = teamRating(context, player.teamId);
-    const opponent = teamRating(context, fixtures[0].opponentId);
-    const homeDefence = fixtures[0].home ? AWAY_ATTACK_PENALTY : HOME_ATTACK_BOOST;
-    const probability = Math.exp(
-      -context.averageGoals * opponent.attack * own.defence * homeDefence,
-    );
+    const probability = cleanSheetChanceFor(context, player, fixtures) ?? 0;
     reasons.push(`${Math.round(probability * 100)}% clean sheet chance`);
   }
 
@@ -493,6 +520,14 @@ export function projectPlayers(
         targetFixtures,
         targetPlayProbability,
       ),
+      xgiPer90: (() => {
+        const xgi = xgiPer90For(player);
+        return xgi === null ? null : round(xgi);
+      })(),
+      cleanSheetChance: (() => {
+        const chance = cleanSheetChanceFor(context, player, targetFixtures);
+        return chance === null ? null : round(chance);
+      })(),
     };
   });
 }
