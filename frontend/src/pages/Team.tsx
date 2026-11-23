@@ -10,6 +10,7 @@ import { ErrorPanel } from '../components/QueryState';
 import { EmptyState, Segmented, Skeleton, TeamChip } from '../components/ui';
 import { GET_PREDICTED_TEAM } from '../graphql/predictor';
 import type { PredictedTeam, ProjectedPlayer } from '../graphql/predictor';
+import pitchImage from '../assets/pitch.webp';
 import { LEAGUES, useLeague } from '../lib/league';
 import { formatPoints, formatPrice } from '../lib/format';
 import type { Position } from '../lib/format';
@@ -35,7 +36,7 @@ function RoleBadge({ item }: { item: ProjectedPlayer }) {
     <span
       className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
         item.isCaptain
-          ? 'bg-accent text-[#04130c] shadow-[0_0_12px_rgb(60_245_160/0.7)]'
+          ? 'bg-accent text-[#03140d] shadow-[0_0_12px_rgb(33_227_138/0.7)]'
           : 'border border-white/30 bg-black/40 text-ink'
       }`}
       title={item.isCaptain ? 'Captain' : 'Vice-captain'}
@@ -73,7 +74,7 @@ function PlayerCard({
         aria-label={`${player.displayName}, ${formatPoints(item.predictedPoints)} projected points. Show why this pick.`}
         maxTilt={10}
         className={`glass flex flex-col rounded-xl text-left ${
-          compact ? 'w-full p-2.5' : 'w-[4.85rem] p-2 sm:w-[7.25rem] sm:p-2.5'
+          compact ? 'w-full p-2.5' : 'w-[4.85rem] !bg-[#0b100d]/80 p-2 sm:w-[7.25rem] sm:p-2.5'
         } ${doubtful ? '!border-warn/40' : ''}`}
       >
         <span className="flex items-center justify-between gap-1">
@@ -117,22 +118,22 @@ function Pitch({
       aria-label={`Starting XI in a ${team.formation} formation`}
       role="group"
     >
-      {/* Mown stripes and pitch markings, top-down */}
+      {/* Top-down pitch artwork, goal at the top behind the goalkeeper */}
+      <img
+        src={pitchImage}
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover object-top"
+      />
       <div
         aria-hidden="true"
         className="absolute inset-0"
         style={{
-          backgroundImage:
-            'repeating-linear-gradient(180deg, rgb(255 255 255 / 0.018) 0 56px, transparent 56px 112px), radial-gradient(ellipse at 50% 40%, rgb(60 245 160 / 0.10), transparent 65%)',
+          background:
+            'radial-gradient(ellipse at 50% 45%, rgb(33 227 138 / 0.08), transparent 60%), linear-gradient(180deg, rgb(10 12 12 / 0.15), rgb(10 12 12 / 0.05) 40%, rgb(10 12 12 / 0.45))',
         }}
       />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-3 rounded-2xl border border-white/[0.09]">
-        <div className="absolute left-1/2 top-0 h-[17%] w-[44%] -translate-x-1/2 border border-t-0 border-white/[0.09]" />
-        <div className="absolute left-1/2 top-0 h-[7%] w-[20%] -translate-x-1/2 border border-t-0 border-white/[0.09]" />
-        <div className="absolute left-1/2 top-[17%] h-10 w-20 -translate-x-1/2 rounded-b-full border border-t-0 border-white/[0.09]" />
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/[0.09]" />
-        <div className="absolute bottom-0 left-1/2 h-28 w-28 -translate-x-1/2 translate-y-1/2 rounded-full border border-white/[0.09]" />
-      </div>
 
       <div className="relative flex min-h-[30rem] flex-1 flex-col justify-around gap-4 px-1.5 py-7 sm:min-h-[38rem] sm:px-6">
         {ROWS.map((position) => (
