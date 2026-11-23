@@ -1,6 +1,6 @@
-import { useId } from 'react';
 import type { ReactNode } from 'react';
 
+import logoMark from '../assets/logo-mark.webp';
 import { POSITION_STYLES, kitColours } from '../lib/format';
 import type { Position } from '../lib/format';
 
@@ -95,7 +95,7 @@ export function Segmented<T extends string | number>({
               size === 'sm' ? 'px-3 py-1 text-xs' : 'px-4 py-1.5 text-sm'
             } ${
               active
-                ? 'bg-accent text-[#04130c] shadow-[0_0_20px_-4px_rgb(60_245_160/0.6)]'
+                ? 'bg-accent text-[#03140d] shadow-[0_0_20px_-4px_rgb(33_227_138/0.6)]'
                 : 'text-muted hover:text-ink'
             }`}
           >
@@ -169,23 +169,9 @@ export function EmptyState({
 }
 
 export function Logo({ withWordmark = true }: { withWordmark?: boolean }) {
-  // Unique per instance: a gradient defined in a hidden copy can't be referenced.
-  const gradientId = `logo-${useId().replace(/:/g, '')}`;
-
   return (
     <span className="flex items-center gap-2.5">
-      <svg viewBox="0 0 32 32" className="h-8 w-8" aria-hidden="true">
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="#3cf5a0" />
-            <stop offset="1" stopColor="#19d3c5" />
-          </linearGradient>
-        </defs>
-        <rect x="0.5" y="0.5" width="31" height="31" rx="9" fill="#111" stroke="rgb(255 255 255 / 0.12)" />
-        <rect x="8" y="17" width="4" height="7" rx="1.5" fill={`url(#${gradientId})`} opacity="0.55" />
-        <rect x="14" y="12" width="4" height="12" rx="1.5" fill={`url(#${gradientId})`} opacity="0.8" />
-        <rect x="20" y="7" width="4" height="17" rx="1.5" fill={`url(#${gradientId})`} />
-      </svg>
+      <img src={logoMark} alt="" width={32} height={32} className="h-8 w-8 rounded-[9px]" />
       {withWordmark && (
         <span className="text-[15px] font-semibold tracking-tight">
           Fantasy<span className="text-muted">Predictor</span>
@@ -204,7 +190,7 @@ export function FooterNote() {
 }
 
 export const buttonPrimary =
-  'inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-[#04130c] shadow-[0_8px_30px_-8px_rgb(60_245_160/0.6)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-[#03140d] shadow-[0_8px_30px_-8px_rgb(33_227_138/0.6)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50';
 
 export const buttonGhost =
   'inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white/[0.03] px-4 py-2 text-sm font-medium text-ink transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50';
