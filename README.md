@@ -34,12 +34,11 @@ For each upcoming gameweek it:
 
 - Every player with price, projected points for the next gameweek, total points, form, ownership and injury news.
 - Search, filter by team and position, sort by projection, points, form, value or price, and shuffle.
-- Select a favourite player, shown on the Profile page.
+- Star favourite players and filter to them. Favourites are saved in your browser (`localStorage`), per competition.
 
-### Accounts
+### No account needed
 
-- Register and log in with a mobile number and password. Passwords are hashed with bcrypt and sessions use a JWT that lasts one hour.
-- Every data query requires a valid bearer token.
+The site is free and public: there is no sign-up or login, and no personal data is stored. All data comes from the public fantasy APIs.
 
 ---
 
@@ -66,7 +65,7 @@ These are statistical estimates, not guarantees. Team news, rotation and luck st
 
 ## Technologies
 
-**Backend:** TypeScript, Node.js, NestJS, GraphQL (Apollo Server, code-first), TypeORM, SQLite (better-sqlite3), Passport JWT, bcrypt, Axios, class-validator.
+**Backend:** TypeScript, Node.js, NestJS, GraphQL (Apollo Server, code-first), Axios.
 
 **Frontend:** React, TypeScript, Vite, Tailwind CSS, Apollo Client, React Router.
 
@@ -104,14 +103,13 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173, register an account, and log in with your mobile number and password. You'll land on the Best XI page.
+Open http://localhost:5173. You'll land on the Best XI page.
 
 ### Configuration (optional)
 
 | Variable | Where | Default | Purpose |
 | --- | --- | --- | --- |
 | `PORT` | backend | `4000` | HTTP port |
-| `JWT_SECRET` | backend | development value | Secret for signing JWTs. **Set this in production.** |
 | `CORS_ORIGIN` | backend | `http://localhost:5173` | Comma-separated list of allowed frontend origins |
 | `UCL_SEASON_ID` | backend | auto-detected | Forces a specific UEFA fantasy season |
 | `VITE_API_URL` | frontend | `http://localhost:4000/graphql` | GraphQL endpoint the frontend calls |
@@ -120,7 +118,7 @@ Open http://localhost:5173, register an account, and log in with your mobile num
 
 ## GraphQL API
 
-All queries except `health`, `register` and `login` need the header `Authorization: Bearer <accessToken>`.
+All queries are public; no token is needed.
 
 ```graphql
 # Season rules and gameweeks
@@ -146,9 +144,10 @@ query {
 
 # All players with next-gameweek projections
 query { players(league: PREMIER_LEAGUE) { displayName team position price predictedPoints } }
-```
 
-Account operations: `register(input)`, `login(input)`, `me`, `setFavouritePlayer(player)`.
+# Recent points per gameweek for one player (FPL only; used for form sparklines)
+query { playerHistory(league: PREMIER_LEAGUE, playerId: "430") { recent { gameweek points } } }
+```
 
 ---
 
@@ -170,15 +169,13 @@ npm run build
 
 ```text
 backend/src/
-├── App/          # Root module (GraphQL, TypeORM)
-├── Auth/         # Register, login, JWT strategy and guards
-├── User/         # User entity and service (SQLite)
-├── Players/      # API clients (FPL, UEFA), normalised domain model, players query
+├── App/          # Root module (GraphQL)
+├── Players/      # API clients (FPL, UEFA), normalised domain model, players and history queries
 └── Predictor/    # Projection model, squad optimiser, insights, GraphQL resolver
 
 frontend/src/
-├── components/   # App layout, gameweek picker, loading/error states
-├── graphql/      # Queries and mutations
-├── lib/          # League context, formatting helpers
-└── pages/        # Login, Register, Team (Best XI), Insights, Players, Profile
+├── components/   # Layout, motion and UI building blocks, player panel, states
+├── graphql/      # Queries
+├── lib/          # League context, favourites, formatting helpers
+└── pages/        # Team (Best XI), Insights, Players
 ```
