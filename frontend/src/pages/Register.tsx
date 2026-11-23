@@ -142,9 +142,9 @@ export default function Register() {
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-white/60">
+      <p className="mt-6 text-center text-sm text-muted">
         Already have an account?
-        <Link to="/login" className="ml-2 font-extrabold text-accent hover:underline">
+        <Link to="/login" className="ml-1.5 font-medium text-mint hover:underline">
           Log in
         </Link>
       </p>

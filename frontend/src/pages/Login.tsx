@@ -116,9 +116,9 @@ export default function Login() {
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-white/60">
+      <p className="mt-6 text-center text-sm text-muted">
         New here?
-        <Link to="/register" className="ml-2 font-extrabold text-accent hover:underline">
+        <Link to="/register" className="ml-1.5 font-medium text-mint hover:underline">
           Create an account
         </Link>
       </p>
