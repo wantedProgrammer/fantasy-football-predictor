@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useMutation, useQuery } from '@apollo/client';
+import { useQuery } from '@apollo/client';
 
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
 import { ErrorPanel } from '../components/QueryState';
 import { EmptyState, PositionTag, Skeleton, TeamChip, buttonGhost } from '../components/ui';
 import { GET_PLAYERS } from '../graphql/players';
-import { ME, SET_FAVOURITE_PLAYER } from '../graphql/profile';
+import { useFavourites } from '../lib/favourites';
 import { LEAGUES, useLeague } from '../lib/league';
 import { formatPoints, formatPrice } from '../lib/format';
 import type { Position } from '../lib/format';
@@ -82,8 +82,8 @@ function StarButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      aria-label={active ? `${name} is your favourite player` : `Set ${name} as favourite player`}
-      title={active ? 'Favourite player' : 'Set as favourite'}
+      aria-label={active ? `Remove ${name} from favourites` : `Add ${name} to favourites`}
+      title={active ? 'Remove from favourites' : 'Add to favourites'}
       className={`flex h-8 w-8 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
         active ? 'text-mint drop-shadow-[0_0_8px_rgb(33_227_138/0.8)]' : 'text-faint hover:bg-white/[0.06] hover:text-ink'
       }`}
@@ -140,14 +140,12 @@ export default function Players() {
   const [search, setSearch] = useState('');
   const [shuffleVersion, setShuffleVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [favouriteMessage, setFavouriteMessage] = useState('');
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
 
   const { data, loading, error, refetch } = useQuery<{ players: Player[] }>(GET_PLAYERS, {
     variables: { league },
   });
-  const { data: meData } = useQuery<{ me: { id: number; favouritePlayer?: string | null } }>(ME);
-  const favouritePlayer = meData?.me.favouritePlayer ?? null;
-  const [setFavouritePlayer, { loading: savingFavourite }] = useMutation(SET_FAVOURITE_PLAYER);
+  const favourites = useFavourites(league);
 
   const [previousLeague, setPreviousLeague] = useState(league);
   if (previousLeague !== league) {
@@ -169,6 +167,7 @@ export default function Players() {
       (player) =>
         (selectedTeam === 'ALL' || player.team === selectedTeam) &&
         (selectedPosition === 'ALL' || player.position === selectedPosition) &&
+        (!favouritesOnly || favourites.ids.includes(player.id)) &&
         (!query ||
           `${player.firstName} ${player.secondName} ${player.displayName}`.toLowerCase().includes(query)),
     );
@@ -189,7 +188,7 @@ export default function Players() {
     }
 
     return players;
-  }, [data, selectedTeam, selectedPosition, search, sort, shuffleVersion]);
+  }, [data, selectedTeam, selectedPosition, favouritesOnly, favourites.ids, search, sort, shuffleVersion]);
 
   const visiblePlayers = filteredPlayers.slice(0, visibleCount);
   const leagueLabel = LEAGUES.find((item) => item.id === league)?.label ?? '';
@@ -203,23 +202,8 @@ export default function Players() {
     );
   }
 
-  async function selectFavourite(player: Player) {
-    setFavouriteMessage('');
-    try {
-      const result = await setFavouritePlayer({
-        variables: { player: player.displayName },
-        refetchQueries: [{ query: ME }],
-      });
-      const saved = result.data?.setFavouritePlayer?.favouritePlayer ?? player.displayName;
-      setFavouriteMessage(`${saved} is now your favourite player.`);
-    } catch (mutationError) {
-      setFavouriteMessage(
-        mutationError instanceof Error ? mutationError.message : 'Unable to save favourite player.',
-      );
-    }
-  }
-
   function resetFilters() {
+    setFavouritesOnly(false);
     setSearch('');
     setSelectedTeam('ALL');
     setSelectedPosition('ALL');
@@ -350,6 +334,22 @@ export default function Players() {
           </label>
         </div>
 
+        <button
+          type="button"
+          aria-pressed={favouritesOnly}
+          onClick={() => {
+            setFavouritesOnly((current) => !current);
+            setVisibleCount(PAGE_SIZE);
+          }}
+          className={`${buttonGhost} ${favouritesOnly ? '!border-mint/40 !text-mint' : ''}`}
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill={favouritesOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+            <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" />
+          </svg>
+          Favourites
+          <span className="num font-mono text-xs text-faint">{favourites.ids.length}</span>
+        </button>
+
         <button type="button" onClick={() => setShuffleVersion((current) => current + 1)} className={buttonGhost}>
           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 6h3.5c3 0 4 8 7 8H17M14.5 11.5L17 14l-2.5 2.5M3 14h3.5c1.2 0 2-1.2 2.7-2.6M11 8.4C11.7 7 12.5 6 13.5 6H17M14.5 3.5L17 6l-2.5 2.5" />
@@ -362,18 +362,27 @@ export default function Players() {
         <span className="num">
           {loading ? 'Loading…' : `Showing ${visiblePlayers.length} of ${filteredPlayers.length} players`}
         </span>
-        {favouriteMessage && (
-          <span role="status" className="text-mint">
-            ★ {favouriteMessage}
-          </span>
-        )}
+        <span>Favourites are saved in this browser.</span>
       </div>
 
       <div className="mt-3">
         {loading && <PlayersSkeleton />}
         {error && !loading && <ErrorPanel title="Unable to load players" error={error} onRetry={() => refetch()} />}
 
-        {!loading && !error && filteredPlayers.length === 0 && (
+        {!loading && !error && filteredPlayers.length === 0 && favouritesOnly && favourites.ids.length === 0 && (
+          <EmptyState
+            icon="star"
+            title="No favourites yet"
+            body="Tap the star next to any player to keep them here. Favourites are saved in this browser."
+            action={
+              <button type="button" onClick={() => setFavouritesOnly(false)} className={buttonGhost}>
+                Show all players
+              </button>
+            }
+          />
+        )}
+
+        {!loading && !error && filteredPlayers.length === 0 && !(favouritesOnly && favourites.ids.length === 0) && (
           <EmptyState
             title="No players match these filters"
             body="Try a different name, team or position."
@@ -406,7 +415,7 @@ export default function Players() {
                 </thead>
                 <tbody>
                   {visiblePlayers.map((player) => {
-                    const isFavourite = favouritePlayer === player.displayName;
+                    const isFavourite = favourites.isFavourite(player.id);
                     return (
                       <tr key={player.id} className="border-b border-line/60 transition last:border-0 hover:bg-white/[0.03]">
                         <td className="py-2.5 pl-5 pr-3">
@@ -437,9 +446,9 @@ export default function Players() {
                         <td className="pr-3 text-right">
                           <StarButton
                             active={isFavourite}
-                            disabled={savingFavourite}
+                            disabled={false}
                             name={player.displayName}
-                            onClick={() => selectFavourite(player)}
+                            onClick={() => favourites.toggle(player.id)}
                           />
                         </td>
                       </tr>
@@ -452,7 +461,7 @@ export default function Players() {
             {/* Mobile cards */}
             <ul className="space-y-2 md:hidden">
               {visiblePlayers.map((player) => {
-                const isFavourite = favouritePlayer === player.displayName;
+                const isFavourite = favourites.isFavourite(player.id);
                 return (
                   <li key={player.id} className="glass rounded-2xl p-3.5">
                     <div className="flex items-start justify-between gap-2">
@@ -469,9 +478,9 @@ export default function Players() {
                       </div>
                       <StarButton
                         active={isFavourite}
-                        disabled={savingFavourite}
+                        disabled={false}
                         name={player.displayName}
-                        onClick={() => selectFavourite(player)}
+                        onClick={() => favourites.toggle(player.id)}
                       />
                     </div>
                     <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
