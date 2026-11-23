@@ -1,18 +1,16 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 
 import AppLayout from '../components/AppLayout';
-import { Shirt } from '../components/Decor';
-import PageHero from '../components/PageHero';
-import { ErrorPanel, Loading } from '../components/QueryState';
+import PageHeader from '../components/PageHeader';
+import { ErrorPanel } from '../components/QueryState';
+import { EmptyState, PositionTag, Skeleton, TeamChip, buttonGhost } from '../components/ui';
 import { GET_PLAYERS } from '../graphql/players';
 import { ME, SET_FAVOURITE_PLAYER } from '../graphql/profile';
 import { LEAGUES, useLeague } from '../lib/league';
-import { POSITION_STYLES, formatPoints, formatPrice, plural } from '../lib/format';
+import { formatPoints, formatPrice } from '../lib/format';
 import type { Position } from '../lib/format';
-
-import premierLeagueHero from '../assets/premier-league-games.webp';
-import championsLeagueHero from '../assets/Champions_League_trophy.png.webp';
 
 type Player = {
   id: string;
@@ -33,49 +31,112 @@ type Player = {
   predictedPoints: number;
 };
 
-type SortKey = 'predicted' | 'points' | 'form' | 'value' | 'priceHigh' | 'priceLow' | 'none';
+type SortKey = 'predicted' | 'points' | 'form' | 'value' | 'price' | 'owned' | 'name' | 'none';
+type SortDirection = 'desc' | 'asc';
 
 const SORTS: { value: SortKey; label: string }[] = [
-  { value: 'predicted', label: 'Projected points (next GW)' },
+  { value: 'predicted', label: 'Projection' },
   { value: 'points', label: 'Total points' },
   { value: 'form', label: 'Form' },
-  { value: 'value', label: 'Projected points per million' },
-  { value: 'priceHigh', label: 'Price: high to low' },
-  { value: 'priceLow', label: 'Price: low to high' },
-  { value: 'none', label: 'No sorting' },
+  { value: 'value', label: 'Value (pts per £/€m)' },
+  { value: 'price', label: 'Price' },
+  { value: 'owned', label: 'Ownership' },
 ];
 
-const POSITION_FILTERS: { value: Position | 'ALL'; label: string }[] = [
-  { value: 'ALL', label: 'All' },
-  { value: 'GK', label: 'GK' },
-  { value: 'DEF', label: 'DEF' },
-  { value: 'MID', label: 'MID' },
-  { value: 'FWD', label: 'FWD' },
-];
+const VALUES: Record<Exclude<SortKey, 'none'>, (player: Player) => number | string> = {
+  predicted: (player) => player.predictedPoints,
+  points: (player) => player.totalPoints,
+  form: (player) => player.form,
+  value: (player) => player.predictedPoints / player.price,
+  price: (player) => player.price,
+  owned: (player) => player.selectedBy,
+  name: (player) => player.displayName.toLowerCase(),
+};
 
-const PAGE_SIZE = 48;
-
-/** Columns for the player list: player, price, projected, points, form, owned, favourite. */
-const ROW_GRID =
-  'grid grid-cols-[minmax(0,1fr)_4.5rem_4rem_2.75rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem_5rem_4.5rem_4rem_4.5rem_3rem] sm:gap-3';
+const POSITIONS: (Position | 'ALL')[] = ['ALL', 'GK', 'DEF', 'MID', 'FWD'];
+const PAGE_SIZE = 50;
 
 function shufflePlayers(players: Player[]): Player[] {
   const shuffled = [...players];
-
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const randomIndex = Math.floor(Math.random() * (index + 1));
     [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
   }
-
   return shuffled;
 }
 
+function StarButton({
+  active,
+  disabled,
+  name,
+  onClick,
+}: {
+  active: boolean;
+  disabled: boolean;
+  name: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      aria-label={active ? `${name} is your favourite player` : `Set ${name} as favourite player`}
+      title={active ? 'Favourite player' : 'Set as favourite'}
+      className={`flex h-8 w-8 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
+        active ? 'text-mint drop-shadow-[0_0_8px_rgb(60_245_160/0.8)]' : 'text-faint hover:bg-white/[0.06] hover:text-ink'
+      }`}
+    >
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">
+        <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" />
+      </svg>
+    </button>
+  );
+}
+
+function InjuryFlag({ player }: { player: Player }) {
+  if (player.availability >= 1) {
+    return <span className="text-faint" aria-label="Available">—</span>;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-warn/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-warn"
+      title={player.news ?? undefined}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-warn" />
+      {Math.round(player.availability * 100)}%
+    </span>
+  );
+}
+
+function FormBar({ form }: { form: number }) {
+  return (
+    <span className="flex items-center justify-end gap-2">
+      <span className="num">{form.toFixed(1)}</span>
+      <span className="hidden h-1 w-10 overflow-hidden rounded-full bg-white/[0.07] xl:block">
+        <span className="bg-accent block h-full rounded-full" style={{ width: `${Math.min(form / 10, 1) * 100}%` }} />
+      </span>
+    </span>
+  );
+}
+
+function PlayersSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading players" className="glass space-y-2 rounded-2xl p-4">
+      {Array.from({ length: 10 }, (_, index) => (
+        <Skeleton key={index} className="h-11 w-full" />
+      ))}
+    </div>
+  );
+}
+
 export default function Players() {
-  const { league } = useLeague();
+  const { league, currency } = useLeague();
 
   const [selectedTeam, setSelectedTeam] = useState('ALL');
   const [selectedPosition, setSelectedPosition] = useState<Position | 'ALL'>('ALL');
-  const [sortKey, setSortKey] = useState<SortKey>('predicted');
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'predicted', direction: 'desc' });
   const [search, setSearch] = useState('');
   const [shuffleVersion, setShuffleVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -86,7 +147,6 @@ export default function Players() {
   });
   const { data: meData } = useQuery<{ me: { id: number; favouritePlayer?: string | null } }>(ME);
   const favouritePlayer = meData?.me.favouritePlayer ?? null;
-
   const [setFavouritePlayer, { loading: savingFavourite }] = useMutation(SET_FAVOURITE_PLAYER);
 
   const [previousLeague, setPreviousLeague] = useState(league);
@@ -99,10 +159,7 @@ export default function Players() {
   }
 
   const teams = useMemo(
-    () =>
-      [...new Set((data?.players ?? []).map((player) => player.team))].sort((a, b) =>
-        a.localeCompare(b),
-      ),
+    () => [...new Set((data?.players ?? []).map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
     [data],
   );
 
@@ -113,40 +170,41 @@ export default function Players() {
         (selectedTeam === 'ALL' || player.team === selectedTeam) &&
         (selectedPosition === 'ALL' || player.position === selectedPosition) &&
         (!query ||
-          `${player.firstName} ${player.secondName} ${player.displayName}`
-            .toLowerCase()
-            .includes(query)),
+          `${player.firstName} ${player.secondName} ${player.displayName}`.toLowerCase().includes(query)),
     );
 
-    const comparators: Record<SortKey, ((a: Player, b: Player) => number) | null> = {
-      predicted: (a, b) => b.predictedPoints - a.predictedPoints,
-      points: (a, b) => b.totalPoints - a.totalPoints,
-      form: (a, b) => b.form - a.form,
-      value: (a, b) => b.predictedPoints / b.price - a.predictedPoints / a.price,
-      priceHigh: (a, b) => b.price - a.price,
-      priceLow: (a, b) => a.price - b.price,
-      none: null,
-    };
-
-    const comparator = comparators[sortKey];
-    if (comparator) {
-      players = [...players].sort(comparator);
+    if (shuffleVersion > 0) {
+      return shufflePlayers(players);
     }
 
-    if (shuffleVersion > 0) {
-      players = shufflePlayers(players);
+    if (sort.key !== 'none') {
+      const read = VALUES[sort.key];
+      const factor = sort.direction === 'desc' ? -1 : 1;
+      players = [...players].sort((a, b) => {
+        const left = read(a);
+        const right = read(b);
+        if (typeof left === 'string' && typeof right === 'string') return left.localeCompare(right) * factor;
+        return ((left as number) - (right as number)) * factor;
+      });
     }
 
     return players;
-  }, [data, selectedTeam, selectedPosition, search, sortKey, shuffleVersion]);
+  }, [data, selectedTeam, selectedPosition, search, sort, shuffleVersion]);
 
   const visiblePlayers = filteredPlayers.slice(0, visibleCount);
-  const currency = league === 'PREMIER_LEAGUE' ? '£' : '€';
   const leagueLabel = LEAGUES.find((item) => item.id === league)?.label ?? '';
+
+  function sortBy(key: SortKey) {
+    setShuffleVersion(0);
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'desc' ? 'asc' : 'desc' }
+        : { key, direction: key === 'name' ? 'asc' : 'desc' },
+    );
+  }
 
   async function selectFavourite(player: Player) {
     setFavouriteMessage('');
-
     try {
       const result = await setFavouritePlayer({
         variables: { player: player.displayName },
@@ -161,50 +219,99 @@ export default function Players() {
     }
   }
 
+  function resetFilters() {
+    setSearch('');
+    setSelectedTeam('ALL');
+    setSelectedPosition('ALL');
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  // Called as a plain function (not as a JSX component) so React doesn't remount it every render.
+  function renderHeader({ label, sortKey, align = 'right', className = '' }: { label: ReactNode; sortKey?: SortKey; align?: 'left' | 'right'; className?: string }) {
+    const active = sortKey && sort.key === sortKey && shuffleVersion === 0;
+    return (
+      <th
+        key={typeof label === 'string' ? label : 'favourite'}
+        scope="col"
+        aria-sort={active ? (sort.direction === 'desc' ? 'descending' : 'ascending') : undefined}
+        className={`px-3 py-3 font-medium ${align === 'right' ? 'text-right' : 'text-left'} ${className}`}
+      >
+        {sortKey ? (
+          <button
+            type="button"
+            onClick={() => sortBy(sortKey)}
+            className={`inline-flex items-center gap-1 transition hover:text-ink ${active ? 'text-mint' : ''}`}
+          >
+            {label}
+            <span className={`text-[9px] ${active ? 'opacity-100' : 'opacity-30'}`}>
+              {active && sort.direction === 'asc' ? '▲' : '▼'}
+            </span>
+          </button>
+        ) : (
+          label
+        )}
+      </th>
+    );
+  }
+
   return (
     <AppLayout
-      hero={
-        <PageHero
+      gameweekApplies={false}
+      header={
+        <PageHeader
+          key={league}
           eyebrow={`${leagueLabel} · Live player data`}
-          title={
-            <>
-              Player <span className="text-accent">market</span>
-            </>
-          }
-          description="Every player with price, form and next-gameweek projection. Filter, sort and find your next transfer."
-          image={league === 'PREMIER_LEAGUE' ? premierLeagueHero : championsLeagueHero}
+          title="Every player, ranked"
+          accentWords={['ranked']}
+          description="Price, form, ownership and next-gameweek projection. Filter, sort and find your next transfer."
         />
       }
     >
-      <div className="overflow-hidden rounded-3xl border border-line bg-surface">
-        {/* Filter bar */}
-        <div className="grid gap-3 border-b border-line bg-band p-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
-          <label className="relative block">
-            <span className="sr-only">Search players</span>
-            <svg
-              viewBox="0 0 20 20"
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              aria-hidden="true"
-            >
-              <circle cx="9" cy="9" r="6" />
-              <path d="M14 14l4 4" strokeLinecap="round" />
-            </svg>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setVisibleCount(PAGE_SIZE);
-              }}
-              placeholder="Search by player name"
-              className="field pl-10"
-            />
-          </label>
+      {/* Filters */}
+      <div className="glass flex flex-col gap-3 rounded-2xl p-3 lg:flex-row lg:items-center">
+        <label className="relative block flex-1">
+          <span className="sr-only">Search players</span>
+          <svg viewBox="0 0 20 20" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="9" cy="9" r="5.5" />
+            <path d="M13.5 13.5L17 17" strokeLinecap="round" />
+          </svg>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setVisibleCount(PAGE_SIZE);
+            }}
+            placeholder="Search players"
+            className="field !pl-10"
+          />
+        </label>
 
-          <label className="block">
+        <div role="radiogroup" aria-label="Position" className="flex rounded-xl border border-line bg-white/[0.03] p-1">
+          {POSITIONS.map((position) => {
+            const active = selectedPosition === position;
+            return (
+              <button
+                key={position}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => {
+                  setSelectedPosition(position);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                className={`flex-1 rounded-lg px-3 py-1.5 font-mono text-xs font-medium transition ${
+                  active ? 'bg-white/[0.09] text-mint' : 'text-muted hover:text-ink'
+                }`}
+              >
+                {position === 'ALL' ? 'All' : position}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:flex">
+          <label className="block lg:w-44">
             <span className="sr-only">Team</span>
             <select
               value={selectedTeam}
@@ -223,205 +330,178 @@ export default function Players() {
             </select>
           </label>
 
-          <label className="block">
+          <label className="block lg:w-48">
             <span className="sr-only">Sort by</span>
             <select
-              value={sortKey}
+              value={shuffleVersion > 0 ? 'none' : sort.key}
               onChange={(event) => {
-                setSortKey(event.target.value as SortKey);
                 setShuffleVersion(0);
+                setSort({ key: event.target.value as SortKey, direction: 'desc' });
               }}
               className="field"
             >
-              {SORTS.map((sort) => (
-                <option key={sort.value} value={sort.value}>
-                  Sort: {sort.label}
+              {shuffleVersion > 0 && <option value="none">Shuffled</option>}
+              {SORTS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  Sort: {option.label}
                 </option>
               ))}
             </select>
           </label>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setShuffleVersion((current) => current + 1)}
-              className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-extrabold text-on-accent transition hover:brightness-110"
-            >
-              Shuffle
-            </button>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              title="Refresh data"
-              aria-label="Refresh data"
-              className="rounded-xl border border-white/15 bg-black/20 px-3 transition hover:bg-white/10"
-            >
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M16 10a6 6 0 1 1-1.8-4.3M16 4v3h-3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
         </div>
 
-        {/* Position tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <div role="tablist" aria-label="Position" className="flex gap-1">
-            {POSITION_FILTERS.map((option) => {
-              const active = selectedPosition === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => {
-                    setSelectedPosition(option.value);
-                    setVisibleCount(PAGE_SIZE);
-                  }}
-                  className={`relative px-3 py-1.5 font-display text-lg font-bold uppercase italic tracking-wide transition ${
-                    active ? 'text-accent' : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  {option.label}
-                  {active && <span className="absolute inset-x-2 -bottom-3 h-[3px] rounded-full bg-accent" />}
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs font-semibold text-white/55">
-            Showing {visiblePlayers.length} of {filteredPlayers.length} players
-          </p>
-        </div>
+        <button type="button" onClick={() => setShuffleVersion((current) => current + 1)} className={buttonGhost}>
+          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h3.5c3 0 4 8 7 8H17M14.5 11.5L17 14l-2.5 2.5M3 14h3.5c1.2 0 2-1.2 2.7-2.6M11 8.4C11.7 7 12.5 6 13.5 6H17M14.5 3.5L17 6l-2.5 2.5" />
+          </svg>
+          Shuffle
+        </button>
+      </div>
 
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+        <span className="num">
+          {loading ? 'Loading…' : `Showing ${visiblePlayers.length} of ${filteredPlayers.length} players`}
+        </span>
         {favouriteMessage && (
-          <div className="border-b border-line bg-amber-300/10 px-5 py-3 text-sm font-semibold text-amber-200">
+          <span role="status" className="text-mint">
             ★ {favouriteMessage}
-          </div>
-        )}
-
-        {loading && (
-          <div className="p-4">
-            <Loading label="Loading players..." />
-          </div>
-        )}
-        {error && !loading && (
-          <div className="p-4">
-            <ErrorPanel title="Unable to load players" error={error} onRetry={() => refetch()} />
-          </div>
-        )}
-
-        {!loading && !error && filteredPlayers.length === 0 && (
-          <div className="p-12 text-center text-white/55">No players match the selected filters.</div>
-        )}
-
-        {!loading && !error && visiblePlayers.length > 0 && (
-          <div role="table" aria-label="Players">
-            <div
-              role="row"
-              className={`${ROW_GRID} eyebrow border-b border-line px-4 py-3 text-white/50`}
-            >
-              <span role="columnheader">Player</span>
-              <span role="columnheader" className="text-right text-accent">Price</span>
-              <span role="columnheader" className="text-right">Proj.</span>
-              <span role="columnheader" className="hidden text-right sm:block">Pts</span>
-              <span role="columnheader" className="hidden text-right sm:block">Form</span>
-              <span role="columnheader" className="hidden text-right sm:block">Owned</span>
-              <span role="columnheader" className="text-center">
-                <span className="sr-only">Favourite</span>★
-              </span>
-            </div>
-
-            {visiblePlayers.map((player) => {
-              const isFavourite = favouritePlayer === player.displayName;
-              const doubtful = player.availability < 1;
-
-              return (
-                <div
-                  key={player.id}
-                  role="row"
-                  className={`${ROW_GRID} border-b border-line px-4 py-2.5 transition last:border-b-0 hover:bg-white/[0.04]`}
-                >
-                  <div role="cell" className="flex min-w-0 items-center gap-3">
-                    <span className="relative shrink-0">
-                      <Shirt teamShort={player.teamShort} goalkeeper={player.position === 'GK'} size={40} />
-                      {doubtful && (
-                        <span
-                          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-black"
-                          title={`${Math.round(player.availability * 100)}% chance of playing${player.news ? `: ${player.news}` : ''}`}
-                        >
-                          !
-                        </span>
-                      )}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-extrabold">{player.displayName}</p>
-                      <p className="flex items-center gap-1.5 truncate text-xs text-white/55">
-                        <span
-                          className={`rounded px-1 py-px text-[10px] font-extrabold ${POSITION_STYLES[player.position]}`}
-                        >
-                          {player.position}
-                        </span>
-                        <span className="truncate">{player.team}</span>
-                        <span className="hidden truncate md:inline">
-                          · {plural(player.goals, 'goal')}, {plural(player.assists, 'assist')}
-                        </span>
-                      </p>
-                      {doubtful && player.news && (
-                        <p className="truncate text-[11px] font-semibold text-amber-300">{player.news}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <span role="cell" className="stat rounded-lg bg-accent/10 py-1.5 text-right text-lg text-accent sm:pr-2">
-                    {formatPrice(currency, player.price)}
-                  </span>
-                  <span role="cell" className="stat text-right text-xl">
-                    {formatPoints(player.predictedPoints)}
-                  </span>
-                  <span role="cell" className="stat hidden text-right text-xl text-white/80 sm:block">
-                    {player.totalPoints}
-                  </span>
-                  <span role="cell" className="stat hidden text-right text-xl text-white/80 sm:block">
-                    {player.form.toFixed(1)}
-                  </span>
-                  <span role="cell" className="stat hidden text-right text-xl text-white/80 sm:block">
-                    {player.selectedBy.toFixed(1)}%
-                  </span>
-                  <span role="cell" className="flex justify-center">
-                    <button
-                      type="button"
-                      disabled={savingFavourite}
-                      onClick={() => selectFavourite(player)}
-                      aria-pressed={isFavourite}
-                      aria-label={isFavourite ? `${player.displayName} is your favourite` : `Make ${player.displayName} your favourite`}
-                      title={isFavourite ? 'Favourite player' : 'Select favourite'}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                        isFavourite
-                          ? 'bg-amber-300 text-black'
-                          : 'text-white/40 hover:bg-amber-300/15 hover:text-amber-300'
-                      }`}
-                    >
-                      {isFavourite ? '★' : '☆'}
-                    </button>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          </span>
         )}
       </div>
 
-      {!loading && !error && visibleCount < filteredPlayers.length && (
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
-            className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-extrabold transition hover:border-accent hover:text-accent"
-          >
-            Show more players
-          </button>
-        </div>
-      )}
+      <div className="mt-3">
+        {loading && <PlayersSkeleton />}
+        {error && !loading && <ErrorPanel title="Unable to load players" error={error} onRetry={() => refetch()} />}
+
+        {!loading && !error && filteredPlayers.length === 0 && (
+          <EmptyState
+            title="No players match these filters"
+            body="Try a different name, team or position."
+            action={
+              <button type="button" onClick={resetFilters} className={buttonGhost}>
+                Clear filters
+              </button>
+            }
+          />
+        )}
+
+        {!loading && !error && visiblePlayers.length > 0 && (
+          <>
+            {/* Desktop table */}
+            <div className="glass hidden overflow-hidden rounded-2xl md:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-line text-[11px] uppercase tracking-[0.1em] text-muted">
+                  <tr>
+                    {renderHeader({ label: "Player", sortKey: "name", align: "left", className: "pl-5" })}
+                    {renderHeader({ label: "Team", align: "left", className: "hidden lg:table-cell" })}
+                    {renderHeader({ label: "Pos", align: "left" })}
+                    {renderHeader({ label: "Price", sortKey: "price" })}
+                    {renderHeader({ label: "Next GW", sortKey: "predicted" })}
+                    {renderHeader({ label: "Points", sortKey: "points" })}
+                    {renderHeader({ label: "Form", sortKey: "form" })}
+                    {renderHeader({ label: "Owned", sortKey: "owned" })}
+                    {renderHeader({ label: "Status", align: "left" })}
+                    {renderHeader({ label: <span className="sr-only">Favourite</span> })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visiblePlayers.map((player) => {
+                    const isFavourite = favouritePlayer === player.displayName;
+                    return (
+                      <tr key={player.id} className="border-b border-line/60 transition last:border-0 hover:bg-white/[0.03]">
+                        <td className="py-2.5 pl-5 pr-3">
+                          <span className="flex items-center gap-2.5">
+                            <TeamChip code={player.teamShort} size="xs" />
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">{player.displayName}</span>
+                              <span className="block truncate text-[11px] text-faint">
+                                {player.firstName} {player.secondName}
+                              </span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className="hidden truncate px-3 text-muted lg:table-cell">{player.team}</td>
+                        <td className="px-3">
+                          <PositionTag position={player.position} />
+                        </td>
+                        <td className="num px-3 text-right font-mono">{formatPrice(currency, player.price)}</td>
+                        <td className="num text-accent px-3 text-right font-semibold">{formatPoints(player.predictedPoints)}</td>
+                        <td className="num px-3 text-right">{player.totalPoints}</td>
+                        <td className="px-3 text-right">
+                          <FormBar form={player.form} />
+                        </td>
+                        <td className="num px-3 text-right text-muted">{player.selectedBy.toFixed(1)}%</td>
+                        <td className="px-3">
+                          <InjuryFlag player={player} />
+                        </td>
+                        <td className="pr-3 text-right">
+                          <StarButton
+                            active={isFavourite}
+                            disabled={savingFavourite}
+                            name={player.displayName}
+                            onClick={() => selectFavourite(player)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <ul className="space-y-2 md:hidden">
+              {visiblePlayers.map((player) => {
+                const isFavourite = favouritePlayer === player.displayName;
+                return (
+                  <li key={player.id} className="glass rounded-2xl p-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2">
+                          <span className="truncate font-medium">{player.displayName}</span>
+                          <PositionTag position={player.position} />
+                        </p>
+                        <p className="mt-1 flex items-center gap-2 text-xs text-muted">
+                          <TeamChip code={player.teamShort} size="xs" />
+                          <span className="num font-mono">{formatPrice(currency, player.price)}</span>
+                          <InjuryFlag player={player} />
+                        </p>
+                      </div>
+                      <StarButton
+                        active={isFavourite}
+                        disabled={savingFavourite}
+                        name={player.displayName}
+                        onClick={() => selectFavourite(player)}
+                      />
+                    </div>
+                    <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
+                      {[
+                        ['Next GW', formatPoints(player.predictedPoints), true],
+                        ['Points', String(player.totalPoints), false],
+                        ['Form', player.form.toFixed(1), false],
+                        ['Owned', `${player.selectedBy.toFixed(1)}%`, false],
+                      ].map(([label, value, accent]) => (
+                        <div key={label as string} className="rounded-lg bg-white/[0.03] py-1.5">
+                          <dt className="text-[10px] text-faint">{label}</dt>
+                          <dd className={`num text-sm font-semibold ${accent ? 'text-accent' : ''}`}>{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+
+        {!loading && !error && visibleCount < filteredPlayers.length && (
+          <div className="mt-6 text-center">
+            <button type="button" onClick={() => setVisibleCount((current) => current + PAGE_SIZE)} className={buttonGhost}>
+              Show more players
+            </button>
+          </div>
+        )}
+      </div>
     </AppLayout>
   );
 }
